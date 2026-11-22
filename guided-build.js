@@ -40,6 +40,7 @@ function guidedMotorBoard(){
   return {
     get motor(){return motor;},
     setReference(d){reference=d;motor=null;paint();},
+    flipPhoto(d){reference=d;if(motor)motor.point=[d.image.w-motor.point[0],motor.point[1]];paint();},
     clear(){motor=null;paint();},
     place(asset,name,placement){
       const prior=motor;

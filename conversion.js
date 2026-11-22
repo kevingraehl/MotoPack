@@ -100,6 +100,7 @@ function initConversion(){
     if(n===6)showPrintQuote();
     updateNavigation();dialog.scrollTop=0;
     if(n===1){
+      showOrientation();
       const part=frameParts.find(p=>p.id===motorId);
       if(outlineReady&&part&&caseSketch)board.restorePart(part,caseSketch);
       const menu=$('wizardMotor'),value=menu.value;
@@ -117,6 +118,40 @@ function initConversion(){
     }
 
   }
+  function showOrientation(){
+    const d=reference?.drawing;
+    $('frameOrientation').hidden=!d?.image||outlineReady||!!reference.projected||d.scaleSource==='cad';
+    const flipped=!!reference?.originalPhoto;
+    $('flipFramePhoto').textContent=flipped?'Restore original photo':'Flip frame photo';
+    $('orientationHint').textContent=flipped
+      ? 'Frame photo mirrored for motor layout. The motor keeps its actual sprocket orientation. Confirm the chain side on your bike.'
+      : 'Check the chain side before placing the motor. If your photo faces the opposite way from the motor’s sprocket view, flip the photo.';
+  }
+  async function flippedPhoto(image){
+    const source=new Image();source.src=image.url;await source.decode();
+    const canvas=document.createElement('canvas');canvas.width=image.w;canvas.height=image.h;
+    const ctx=canvas.getContext('2d');ctx.translate(image.w,0);ctx.scale(-1,1);ctx.drawImage(source,0,0,image.w,image.h);
+    return {...image,url:canvas.toDataURL('image/png')};
+  }
+  function flipGuide(guide){
+    if(!guide)return guide;
+    const reflect=points=>points?.map(([x,y])=>[guide.width-x,y]);
+    return {...guide,anchors:reflect(guide.anchors),outline:reflect(guide.outline)};
+  }
+  $('flipFramePhoto').onclick=async()=>{
+    const ref=reference,button=$('flipFramePhoto');
+    if(!ref||outlineReady)return;
+    button.disabled=true;
+    try{
+      const original=ref.originalPhoto,prior=ref.drawing.image;
+      const next=original||ref.flippedImage||await flippedPhoto(prior);
+      if(reference!==ref||outlineReady)return;
+      ref.originalPhoto=original?null:prior;ref.flippedImage=original?prior:next;
+      ref.drawing={...ref.drawing,image:next};ref.practice=flipGuide(ref.practice);
+      board.flipPhoto(ref.drawing);showOrientation();
+    }catch(e){$('orientationHint').textContent='Could not flip this image. '+e.message;}
+    finally{button.disabled=false;}
+  };
   function pickReference(d,extra={}){
     if(outlineReady&&caseSketch){
       if(d.image?.url===reference?.drawing.image?.url&&d.scale===reference.drawing.scale){
@@ -129,7 +164,7 @@ function initConversion(){
       delete extra.frameId;
     }
     $('shareFramePanel').hidden=!!extra.practice||!!extra.projected?.asset.sample; $('allowFrame').checked=false;$('publicFrameName').value='';$('publishFrame').disabled=false;$('frameShareStatus').textContent='';
-    reference={drawing:d,...extra};board.setReference(d);motorPhoto=null;motorId=null;outlineReady=false;motorOK=false;
+    $('batteryMountStatus').textContent='';reference={drawing:d,...extra};board.setReference(d);motorPhoto=null;motorId=null;outlineReady=false;motorOK=false;
     $('rescaleMotor').hidden=true;$('modelStatus').textContent='';showStep(1);
   }
   function prerequisite(destination){
@@ -304,8 +339,14 @@ function initConversion(){
           if(drawing.scale){drawing.scaleSource='cad';pickReference(drawing);return;}
         }
         dialog.close();
-        openConversionEditor({drawing,scaleOnly:'frame',finish(applied,d){
-          if(applied)pickReference(d,{practice:scaleGuide||(distance===214.5573?practiceBike:null)});else showStep(0);
+        openConversionEditor({drawing,scaleOnly:'frame',async finish(applied,d){
+          if(!applied){showStep(0);return;}
+          if(scaleGuide===excTape){
+            try{
+              const image=await flippedPhoto(d.image);
+              pickReference({...d,image},{originalPhoto:d.image,flippedImage:image,practice:flipGuide(excTape)});
+            }catch(e){showStep(0);$('frameWizardStatus').textContent='Could not prepare the KTM photo. '+e.message;}
+          }else pickReference(d,{practice:scaleGuide||(distance===214.5573?practiceBike:null)});
         }});
         if(drawing){$('skScale').click();return;}
       }catch(e){$('frameWizardStatus').textContent=e.message;return;}
@@ -449,7 +490,12 @@ function initConversion(){
     for(const key of ['L','W','H','Wall'])$('shape'+key).value=spec[key];
     $('shapeWall').disabled=spec.kind==='block';$('shapeError').textContent='';$('shapeSave').textContent=editingId?'Update object':'Add to assembly';$('partShape').showModal();
   }
-  for(const id of ['customPart','convTray','skCustomPart'])$(id).onclick=()=>shape();
+  for(const id of ['customPart','convTray','skCustomPart','batteryTray'])$(id).onclick=()=>shape();
+  $('batteryBar').onclick=()=>{
+    shape();$('shapeKind').value='block';$('shapeWall').disabled=true;
+    $('shapeName').value='Battery hold-down bar';
+    $('shapeL').value=20;$('shapeW').value=Math.ceil(current?.c.width||110);$('shapeH').value=4;
+  };
   $('shapeEdit').onclick=()=>shape(true);$('shapeCancel').onclick=()=>$('partShape').close();
   $('shapeKind').onchange=()=>{$('shapeWall').disabled=$('shapeKind').value==='block';};
   $('shapeSave').onclick=()=>{
@@ -469,6 +515,7 @@ function initConversion(){
       const v=triangles.flat(2),asset={v,i:Array.from({length:v.length/3},(_,i)=>i),lo:[0,0,0],hi:[L,W,H]};
       if(dialog.open&&shapeRole==='Motor'&&!editingId){$('partShape').close();setMotor(asset,$('shapeName').value.trim()||'Custom motor');return;}
       commitPart({asset,primitive:spec,name:$('shapeName').value.trim()||'Custom object',role:shapeRole},editingId);
+      if(dialog.open&&step===2)$('batteryMountStatus').textContent=activeFramePart().name+' added to the assembly.';
       $('partShape').close();$('frameStatus').textContent=activeFramePart().name+(outlineReady?' installed. Your enclosure and cell layout are saved.':' ready to position.');if(dialog.open)page(step);
     }catch(e){$('shapeError').textContent=e.message;}
   };
