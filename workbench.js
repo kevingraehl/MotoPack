@@ -184,7 +184,7 @@ function setupHints(){
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('.help'))hide();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
   for(const control of document.querySelectorAll('input:not([type=file]), select')){
-    if(control.id==='themePick'||control.closest('#sheetChecks,#sceneLayers,#skLayers,#visitorDialog'))continue;
+    if(control.id==='themePick'||control.closest('#batteryWizard,#sheetChecks,#sceneLayers,#skLayers,#visitorDialog'))continue;
     const id=control.id,wrap=control.closest('label')||control.parentElement;
     const label=control.getAttribute('aria-label')||wrap.firstChild.textContent.trim()||id;
     const msg=control.dataset.hint||helpText[id]||('Additional clearance at the '+id+' face of the pack in millimeters. Automatic sizing adds this value on this face only; fixed-case mode checks the requested allowance.');

@@ -113,10 +113,13 @@ function addHolderPreview(parts,c,m,s,first,count){
   fix.textContent=!c.holder?'Include holders':problem.startsWith('Pockets touch')?'Set gaps for 1 mm pocket web':'Edit holder dimensions';
   fix.onclick=()=>{if(!c.holder){$('holder').click();}else if(problem.startsWith('Pockets touch'))$('web').click();else fields.edgeU.focus();};
   if(!count||!c.holder||problem||!$('spacers').checked)return;
+  drawHolderEnds(parts,c,m,s,first,count,visibleHolderEnds(first));
+}
+function drawHolderEnds(parts,c,m,s,first,count,ends){
   const key=JSON.stringify([m.cells.map(p=>[p.u,p.v]),c.edgeU,c.edgeV,c.plate,c.d,c.lip,c.land,c.slack,c.cornerRadius,c.holderShape]);
   if(holderCache?.key!==key)holderCache={key,points:new Float32Array(holderTriangles(c,m).flat(2))};
   const bankLength=c.len+2*c.lip;
-  for(const far of visibleHolderEnds(first)){
+  for(const far of ends){
     const pos=holderCache.points.slice();
     for(let i=0;i<pos.length;i+=3){
       const u=pos[i],v=pos[i+1],a=far?bankLength-pos[i+2]:pos[i+2];
@@ -136,11 +139,16 @@ function addSquigglePreview(parts,c,m,s,bank,count){
   let model,sq;
   try{model=squiggleBankModel(c,m,bank);sq=squiggleHolder(model.c,model.m,c.squiggleGuards,false,{buildReinforcement:c.sqRootLive});}
   catch(error){$('holderNote').textContent='Squiggle preview: '+error.message;return;}
+  drawSquiggleEnds(parts,c,m,s,bank,sq,visibleHolderEnds(bank));
+  const over=sq.outsideWidth>c.sqMaxWidth+1e-6;
+  $('holderNote').textContent='Teal squiggles · stack '+(bank+1)+(model.partial?' partial':'')+ ' · '+fmt(sq.outsideWidth)+' mm outside width'+(over?' · over limit (red)':'');
+}
+function drawSquiggleEnds(parts,c,m,s,bank,sq,ends){
   const over=sq.outsideWidth>c.sqMaxWidth+1e-6,lip=c.holder?c.lip:0,bankLength=c.len+2*lip;
   const stride=bankLength+m.axialSheet,edgeU=c.holder?c.edgeU:0,edgeV=c.holder?c.edgeV:0;
   const material=new THREE.MeshStandardMaterial({color:over?0xd84d3f:0x2bb7a9,roughness:.55,metalness:0,side:THREE.DoubleSide});
   const rails=c.sqStyle==='rails';
-  for(const top of (rails?[false]:visibleHolderEnds(bank))){
+  for(const top of (rails?[false]:ends)){
     const pos=new Float32Array(sq.triangles.flat(2));
     for(let i=0;i<pos.length;i+=3){
       const u=pos[i]+edgeU+((rails||c.sqGroupsOnly)?sq.minU-m.u0:0),v=pos[i+1]+edgeV+((rails||c.sqGroupsOnly)?sq.minV-m.v0:0),z=pos[i+2];
@@ -151,7 +159,7 @@ function addSquigglePreview(parts,c,m,s,bank,count){
     const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(pos,3));geometry.computeVertexNormals();
     parts.add(new THREE.Mesh(geometry,material.clone()));
   }
-  $('holderNote').textContent='Teal squiggles · stack '+(bank+1)+(model.partial?' partial':'')+' · '+fmt(sq.outsideWidth)+' mm outside width'+(over?' · over limit (red)':'');
+  material.dispose();
 }
 function captureView(){
   return {preset:$('viewPreset').value,opacity:$('opacity').value,bank:$('bankView').value,scope:$('scope').value,

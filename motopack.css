@@ -243,3 +243,7 @@ body:has(#batteryWizard[open]){overflow:hidden}
 #bwForm header #bwIntro{display:block}
 #bwSupport button{white-space:nowrap}
 .bwBar>span{font-size:.85rem}
+#bwSize{display:block;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text);margin:0 0 .75rem}
+#bwForm .bwUnits{margin:0 0 0 auto;display:flex;align-items:center;gap:.4rem}
+#bwSupport{margin-left:0}
+@media(max-width:600px){.bwBar>span{display:none}#bwForm .bwUnits{font-size:.8rem}#bwForm .bwUnits select{width:auto}}
