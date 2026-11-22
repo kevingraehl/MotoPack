@@ -19,23 +19,56 @@ function createWizardView(host){
   const scene=new THREE.Scene(),model=new THREE.Group(),camera=new THREE.OrthographicCamera();
   scene.add(model,new THREE.AmbientLight(0xffffff,.8));
   const light=new THREE.DirectionalLight(0xffffff,1.1);light.position.set(1,-2,3);scene.add(light);
-  const center=new THREE.Vector3();let radius=1,yaw=-.85,pitch=.5,last;
+  const center=new THREE.Vector3();let radius=1,yaw=-.85,pitch=.5,zoom=1,caseSurface,caseEdges;
   function paint(){
     const w=host.clientWidth,h=host.clientHeight;
     if(!w||!h)return;
     renderer.setSize(w,h,false);
-    const aspect=w/h,half=radius/Math.min(1,aspect);
+    const aspect=w/h,half=radius/(zoom*Math.min(1,aspect));
     Object.assign(camera,{left:-half*aspect,right:half*aspect,top:half,bottom:-half,near:.01,far:10*radius+1});
     camera.position.set(Math.cos(yaw)*Math.cos(pitch),Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch)).multiplyScalar(3*radius).add(center);
     camera.up.set(0,0,1);camera.lookAt(center);camera.updateProjectionMatrix();renderer.render(scene,camera);
   }
-  host.onpointerdown=e=>{host.setPointerCapture(e.pointerId);last=[e.clientX,e.clientY];};
-  host.onpointermove=e=>{if(last){yaw-=(e.clientX-last[0])*.012;pitch=Math.max(-1.5,Math.min(1.5,pitch+(e.clientY-last[1])*.012));last=[e.clientX,e.clientY];paint();}};
-  host.onlostpointercapture=()=>last=null;
+  const pointers=new Map();
+  function setZoom(value){
+    zoom=Math.max(.5,Math.min(64,value));paint();
+  }
+  $('bwIn').onclick=()=>setZoom(zoom*1.5);
+  $('bwOut').onclick=()=>setZoom(zoom/1.5);
+  $('bwFit').onclick=()=>setZoom(1);
+  function wheel(event){
+    event.preventDefault();
+    setZoom(zoom*Math.exp(-Math.sign(event.deltaY)*.12));
+  }
+  host.addEventListener('wheel',wheel,{passive:false});
+  host.onpointerdown=e=>{
+    if(e.button!==0)return;
+    host.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);
+  };
+  host.onpointermove=e=>{
+    const last=pointers.get(e.pointerId);
+    if(!last)return;
+    const point=[e.clientX,e.clientY];
+    pointers.set(e.pointerId,point);
+    if(pointers.size===1){
+      yaw-=(point[0]-last[0])*.012;pitch=Math.max(-1.5,Math.min(1.5,pitch+(point[1]-last[1])*.012));paint();
+    }else if(pointers.size===2){
+      const other=[...pointers.values()].find(p=>p!==point);
+      const before=Math.hypot(last[0]-other[0],last[1]-other[1]);
+      if(before>0)setZoom(zoom*Math.hypot(point[0]-other[0],point[1]-other[1])/before);
+    }
+  };
+  host.onlostpointercapture=e=>pointers.delete(e.pointerId);
+  function shade(){
+    if(!caseSurface)return;
+    const opacity=Number($('bwOpacity').value)/100;
+    caseSurface.material.opacity=opacity;caseSurface.visible=caseEdges.visible=opacity>0;
+    paint();
+  }
   const observer=new ResizeObserver(paint);observer.observe(host);
   function clear(){
     model.traverse(o=>{o.geometry?.dispose();o.material?.dispose();if(o.isInstancedMesh)o.dispose?.();});
-    model.clear();renderer.clear();
+    model.clear();caseEdges=caseSurface=null;renderer.clear();
   }
   function update({c,m},shell){
     clear();
@@ -67,13 +100,19 @@ function createWizardView(host){
     const bounds=new THREE.Box3().setFromObject(model);
     if(c.mode==='inner'||bwPage>=5){
       const dim=shell.outside,base=new THREE.BoxGeometry(...dim);
-      const box=new THREE.LineSegments(new THREE.EdgesGeometry(base),new THREE.LineBasicMaterial({color:0x829bad}));base.dispose();
-      box.position.fromArray(dim.map((v,i)=>v/2+shell.start[i]));model.add(box);bounds.expandByObject(box);
+      caseEdges=new THREE.LineSegments(new THREE.EdgesGeometry(base),new THREE.LineBasicMaterial({color:0x829bad}));
+      // BoxGeometry places the positive Z face fifth. Leave the top open for the lid.
+      const indices=Array.from(base.index.array);
+      base.setIndex(indices.slice(0,24).concat(indices.slice(30)));
+      caseSurface=new THREE.Mesh(base,new THREE.MeshStandardMaterial({color:0x92a3aa,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+      caseSurface.position.fromArray(dim.map((v,i)=>v/2+shell.start[i]));
+      caseEdges.position.copy(caseSurface.position);model.add(caseEdges,caseSurface);
+      bounds.expandByObject(caseSurface);shade();
     }
     bounds.getCenter(center);radius=Math.max(1,bounds.getSize(new THREE.Vector3()).length()*.54);paint();
   }
-  function dispose(){observer.disconnect();clear();renderer.dispose();renderer.forceContextLoss();host.replaceChildren();host.onpointerdown=host.onpointermove=host.onlostpointercapture=null;}
-  return {update,clear,dispose};
+  function dispose(){host.removeEventListener('wheel',wheel);for(const id of ['bwIn','bwOut','bwFit'])$(id).onclick=null;observer.disconnect();clear();renderer.dispose();renderer.forceContextLoss();host.replaceChildren();host.onpointerdown=host.onpointermove=host.onlostpointercapture=null;}
+  return {update,clear,dispose,shade};
 }
 function queueWizardPreview(){
   cancelAnimationFrame(wizardPreviewFrame);

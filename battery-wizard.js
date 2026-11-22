@@ -115,6 +115,8 @@ $('bwReviewBank').onchange=bwDrawBank;
 function bwRefresh(){
   const cavity=bwForm.elements.bwBasis.value==='cavity',up=$('bwAxis').value==='vertical';
   $('bwDims').hidden=!cavity;
+  $('bwCaseControl').hidden=!cavity&&bwPage<5;
+  $('bwOpacityValue').value=$('bwOpacity').value+'%';
   $('bwBanks').options[0].disabled=!cavity;
   if(!cavity&&$('bwBanks').value==='auto')$('bwBanks').value='1';
   $('bwBankLabel').firstElementChild.textContent=up?'How many stacks high?':'How many banks end to end?';
@@ -148,6 +150,9 @@ $('bwBack').onclick=()=>{bwPage--;bwPlan=null;$('bwError').textContent='';bwRefr
 $('bwCancel').onclick=()=>batteryWizard.close();
 bwForm.noValidate=true;
 bwForm.oninput=e=>{
+  if(e.target===$('bwOpacity')){
+    $('bwOpacityValue').value=e.target.value+'%';wizardView?.shade();return;
+  }
   if(bwMeasures.includes(e.target))delete e.target.dataset.mm;
   if(e.target===$('bwUnits'))bwConvert(e.target.value==='mm'?1:25.4);
   if(e.target.name==='bwBasis')$('bwBanks').value=e.target.value==='cavity'?'auto':'1';
@@ -182,6 +187,6 @@ bwForm.onsubmit=e=>{
     $('projectName').value=$('bwName').value.trim()||'Battery pack';
     $('scope').value='all';$('layerBanks').replaceChildren();delete $('scope').dataset.key;
     $('showCells').checked=true;$('showBMS').checked=true;$('showSheets').checked=true;
-    $('viewPreset').value='Assembly';render();orbitView?.preset('Assembly',c.axis);scheduleSave();batteryWizard.close();
+    $('opacity').value=$('bwOpacity').value;$('viewPreset').value='Assembly';render();orbitView?.preset('Assembly',c.axis);scheduleSave();batteryWizard.close();
   }catch(error){$('bwError').textContent=error.message;}
 };
