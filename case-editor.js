@@ -48,7 +48,7 @@ function initCaseEditor(){
   }
   $('skEntry').onchange=()=>{explicitAuto=true;d.entry=$('skEntry').value;syncWidths();paint();};
   $('skDepth').oninput=()=>{depthMeasured=true;if(!guided?.motor){d.widthMeasured=true;syncWidths();paint();}};
-  $('skSwitch').onclick=()=>{mode(tool==='pen'?'draw':'pen');paint();};
+  $('skSwitch').onclick=()=>{mode(traceTool()?'draw':'pen');paint();};
   for(const [id,key] of [['skVolts','targetVolts'],['skPrice','unitPrice']])$(id).oninput=()=>{
     if($(id).value&&$(id).checkValidity()){d[key]=$(id).valueAsNumber;queueFill();}
   };
@@ -133,11 +133,12 @@ function initCaseEditor(){
   };
   const blank=()=>({name:'Blank sketch',points:[],scale:1,closed:false,loops:[],autoPlace:true,endFace:false});
   const message=(text,error=false)=>{const out=$('skStatus');out.textContent=text;out.dataset.error=error;};
+  const traceTool=()=>tool==='pen'||tool==='frameTrace';
   function mode(next){
     returnToSketch();arcThrough=null;hover=null;tool=next;for(const b of dialog.querySelectorAll('[data-sktool]'))b.setAttribute('aria-pressed',b.dataset.sktool===tool);
-    $('skSwitch').textContent=next==='pen'?'Switch to line':'Switch to freehand';
+    $('skSwitch').textContent=traceTool()?'Switch to line':'Switch to freehand';
     $('skMeasure').hidden=next!=='scale'||cal.length!==2;
-    message(({arc:'Pick a start, a point on the curve, then its end. An existing outline supplies the start.',rectangle:'Drag between opposite corners of the rectangle.',circle:'Drag from the center to the edge of the circle.',draw:'Click each corner, then click the first point to close. Hold Shift for a horizontal or vertical edge.',pen:'Drag to trace a continuous outline. Release, then close the outline.',edit:'Drag a corner to move it. Double-click an edge to insert a point. Delete removes the selected corner.',pan:'Drag to pan. Scroll to zoom around the pointer.',scale:'Click both ends of a known length in the drawing.'})[next]);
+    message(({frameTrace:'Drag along the inside edge of the frame photo. Adjust edge offset and pull strength in Highlighter settings. Undo removes one stroke.',arc:'Pick a start, a point on the curve, then its end. An existing outline supplies the start.',rectangle:'Drag between opposite corners of the rectangle.',circle:'Drag from the center to the edge of the circle.',draw:'Click each corner, then click the first point to close. Hold Shift for a horizontal or vertical edge.',pen:'Drag to trace a continuous outline. Release, then close the outline.',edit:'Drag a corner to move it. Double-click an edge to insert a point. Delete removes the selected corner.',pan:'Drag to pan. Scroll to zoom around the pointer.',scale:'Click both ends of a known length in the drawing.'})[next]);
   }
   function remember(){undo.push({...d,points:d.points.map(p=>[...p])});if(undo.length>50)undo.shift();redo=[];}
   function history(forward){const from=forward?redo:undo,to=forward?undo:redo;if(!from.length)return;to.push(d);d=from.pop();selection=-1;cal=[];mode(d.closed?'edit':tool==='arc'?'arc':'draw');sync();paint();}
@@ -195,7 +196,7 @@ function initCaseEditor(){
   function paint(){
     if(!viewport)return;
     drawGuide();
-    if(!$('edgeAssist').checked||d.closed)$('edgeMark').removeAttribute('d');
+    if((!$('edgeAssist').checked&&tool!=='frameTrace')||d.closed)$('edgeMark').removeAttribute('d');
     const g=$('skDrawing');g.replaceChildren();
     const px=1/(board.getScreenCTM()?.a||1),grid=(+$('skGrid').value||10)/(d.scale||1);
     const pattern=$('skPattern');pattern.setAttribute('width',grid);pattern.setAttribute('height',grid);pattern.firstElementChild.setAttribute('d','M'+grid+' 0H0V'+grid);
@@ -398,14 +399,22 @@ function initCaseEditor(){
     if(!(real>0&&dist>.000001)){message('Pick two different points and enter a positive measured length.',true);return;}
     remember();d.scale=real/dist;if(d.step)d.original=false;cal=[];mode(d.closed?'edit':'pen');sync();paint();message('Scale set. '+(d.closed?'Check the depth and apply the enclosure.':'Trace the usable inside opening.'));
   };
-  for(const b of dialog.querySelectorAll('[data-sktool]'))b.onclick=()=>{cal=[];mode(b.dataset.sktool);paint();};
+  for(const b of dialog.querySelectorAll('[data-sktool]'))b.onclick=()=>{
+    if(b.dataset.sktool==='frameTrace'){
+      if(!d.image){message('Load a frame photo to use auto-pull.',true);return;}
+      if(!$('skLayers').querySelector('[data-layer="showFrame"]').checked){message('Show the frame in Drawing layers to use auto-pull.',true);return;}
+      if(d.closed){message('Use Auto-pull to frame beside Smooth outline to adjust a closed outline.',true);return;}
+      edge.prepare(d.image);
+    }
+    cal=[];mode(b.dataset.sktool);paint();
+  };
   $('skUndo').onclick=()=>history(false);$('skRedo').onclick=()=>history(true);$('skGrid').oninput=paint;
   function point(e){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(board.getScreenCTM().inverse());return [p.x,p.y];}
   const edge=frameEdgeAssist();
   board.onpointerleave=()=>{edge.clear();hover=null;drawGuide();};
-  function assist(p,track){return edge.pull(p,d,board.getScreenCTM().a,track);}
+  function assist(p,track){return edge.pull(p,d,board.getScreenCTM().a,track,false,tool==='frameTrace');}
   function snapped(p,e){
-    if(tool==='draw'||tool==='pen')p=assist(p);
+    if(tool==='draw'||traceTool())p=assist(p);
     if($('skSnap').checked&&d.scale){const step=(+$('skGrid').value||10)/d.scale;p=p.map(n=>Math.round(n/step)*step);}
     if(d.points.length&&tool==='draw'&&$('skAxis').value!=='free'){
       const fixed=$('skAxis').value==='x'?1:0;p[fixed]=d.points.at(-1)[fixed];
@@ -459,14 +468,14 @@ function initCaseEditor(){
       if(tool==='draw'&&d.points.length>=3&&Math.hypot(p[0]-d.points[0][0],p[1]-d.points[0][1])*board.getScreenCTM().a<9){$('skClose').click();return;}
       if(tool==='draw'&&e.pointerType==='touch'&&d.points.length){drag={line:true};hover=snapped(p,e);drawGuide();return;}
       if(tool==='draw'){addLine(snapped(p,e));return;}
-      const priorRedo=redo;remember();d.selected=null;hover=null;d.points=[...d.points,snapped(p,e)];if(tool==='pen')d.freehandTrace=true;if(tool==='pen')drag={pen:true,priorRedo,startIndex:d.points.length-1,matrix:board.getScreenCTM().inverse()};
+      const priorRedo=redo;remember();d.selected=null;hover=null;d.points=[...d.points,snapped(p,e)];if(traceTool())d.freehandTrace=true;if(traceTool())drag={pen:true,priorRedo,startIndex:d.points.length-1,matrix:board.getScreenCTM().inverse()};
     }else message('Use Edit points to change this outline, or Clear outline to start a new trace.');
     paint();
   };
   board.onpointermove=e=>{
     if(!drag||drag.line){
       if(!d.closed&&(tool==='arc'||tool==='draw')){hover=snapped(point(e),e);drawGuide();}
-      else if(tool==='pen')assist(point(e));else edge.clear();
+      else if(traceTool())assist(point(e));else edge.clear();
       return;
     }
     if(!e.isPrimary)return;

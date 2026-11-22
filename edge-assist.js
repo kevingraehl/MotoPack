@@ -24,9 +24,9 @@ function frameEdgeAssist(){
       image.src=ref.url;
     });
   }
-  function pull(p,d,zoom,track=null,batch=false){
+  function pull(p,d,zoom,track=null,batch=false,forcePull=false){
     clear();
-    if(!d.image||!batch&&!$('edgeAssist').checked||!$('skLayers').querySelector('[data-layer="showFrame"]').checked)return p;
+    if(!d.image||!batch&&!forcePull&&!$('edgeAssist').checked||!$('skLayers').querySelector('[data-layer="showFrame"]').checked)return p;
     if(source!==d.image.url)load(d.image);
     if(!raster)return p;
     const {gray,w,h,scale}=raster,x=p[0]*scale,y=p[1]*scale;
