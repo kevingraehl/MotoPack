@@ -492,12 +492,10 @@ function initConversion(){
   }
   for(const id of ['customPart','convTray','skCustomPart','batteryTray'])$(id).onclick=()=>shape();
   for(const button of document.querySelectorAll('.addKtmPack')){
-    button.onclick=async()=>{
+    button.onclick=()=>{
       const status=button.nextElementSibling;button.disabled=true;
       try{
-        const url=$('ktmPackStep').href;
-        const blob=url.startsWith('data:')?new Blob([Uint8Array.from(atob(url.split(',')[1]),c=>c.charCodeAt(0))]):await (await fetch(url)).blob();
-        const asset=await importStepMesh(blob);
+        const asset=structuredClone(ktmPrebuiltPackMesh);
         commitPart({name:'KTM 20S12P prebuilt battery',role:'Other',asset,rotation:[90,0,0]});
         status.textContent='Pack added. Use Parts and frame layout to move or rotate it.';
       }catch(e){status.textContent='Could not add the pack. '+e.message;}
