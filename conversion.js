@@ -222,7 +222,7 @@ function initConversion(){
   async function begin(destination){
     entry=destination;$('visitorName').value='';$('visitError').textContent='';
     if(location.protocol==='file:')$('visitorNotice').textContent='This offline copy runs on your device. Verified email sign-in is available in the hosted wizard.';
-    else if(cloud)$('visitorNotice').textContent='Enter your email to start. Your design stays in this browser unless you export it.';
+    else if(cloud||builderApi!=='/MotoPack')$('visitorNotice').textContent='Enter your email to start. Electric Moto Garage records your email and connection IP at check-in. Your builds stay in this browser until you download or share them.';
     $('localName').hidden=false;$('visitorName').required=true;$('visitStart').hidden=false;$('cloudLogin').hidden=true;
     $('visitorDialog').showModal();
   }
@@ -234,7 +234,7 @@ function initConversion(){
     $('visitStart').disabled=true;$('visitCancel').disabled=true;
     try{
       if(location.protocol!=='file:'){
-        const res=await fetch(cloud&&signedIn?'/MotoPack/account/visit':'/MotoPack/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,agreed:true})});
+        const res=await fetch(cloud&&signedIn?'/MotoPack/account/visit':builderApi+'/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,agreed:true})});
         if(!res.ok)throw Error('Could not save your check-in. Please try again.');
       }
       $('visitorDialog').close();$('visitorName').value='';
@@ -667,7 +667,7 @@ function initConversion(){
       'Confirm the printed outline, available depth, motor mounting, cable access and installation path on the bike.'];
     saveBlob('motoPack-builder-notes.txt',lines.join('\n'),'text/plain');
   };
-  const hosted=location.protocol.startsWith('http')&&/^\/(?:MotoPack|battery-layout-wizard)\/?$/i.test(location.pathname);
+  const hosted=builderApi!=='/MotoPack'||location.protocol.startsWith('http')&&/^\/(?:MotoPack|battery-layout-wizard)\/?$/i.test(location.pathname);
   if(!hosted)$('shareStudy').textContent='Download my summary';
   $('shareStudy').onclick=async()=>{
     const button=$('shareStudy');button.disabled=true;
@@ -675,12 +675,15 @@ function initConversion(){
       if(!current)throw Error('Complete the case dimensions before sharing.');
       const data=JSON.stringify(designSummary());
       if(!hosted){saveBlob('conversion-summary.json',data,'application/json');$('shareStatus').textContent='Saved locally. You can review the file before sharing it.';return;}
-      const res=await fetch(location.pathname.replace(/\/$/,'')+'/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:data});
+      const res=await fetch(builderApi+'/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:data});
       if(res.status!==201)throw Error('The summary could not be saved. Try again later.');
       $('shareStatus').textContent='Thank you. Electric Moto Garage received your summary.';
     }catch(e){$('shareStatus').textContent=e.message;}finally{button.disabled=false;}
   };
   page(0);
+  const start=new URLSearchParams(location.search).get('start');
+  if(start==='battery'||start==='motorcycle')setTimeout(()=>begin(start==='battery'?'battery':'wizard'),0);
+
   if(cloud&&new URLSearchParams(location.search).get('account')==='ready'){
     history.replaceState(null,'',location.pathname);
     queueMicrotask(()=>begin(sessionStorage.getItem('motopack-entry')||'resume'));

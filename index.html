@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>motoPack | Dirt Bike Battery Layout &amp; Motor Placement | Electric Moto Garage</title>
+<title>MotoPack Lithium Battery Builder | Electric Moto Garage</title>
 <meta name="description" content="Design an electric dirt bike conversion around your frame. Position the motor, fit a battery pack, and print full-size cardboard templates."><link rel="canonical" href="https://electricmotogarage.com/MotoPack">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f4f2ed;color:#202d32;font:15px/1.45 system-ui,sans-serif}header,main{max-width:1250px;margin:auto;padding:20px 28px}header{border-bottom:1px solid #b8c4bd}h1,h2,p{margin:0}h1{font-size:30px;letter-spacing:-1.4px}h2,summary{font-size:17px;font-weight:650}small,p.note{color:#53625e}main{display:grid;grid-template-columns:minmax(290px,350px) minmax(0,1fr);gap:24px}aside,article{min-width:0}section,details{background:#fff;border:1px solid #cdd3ce;border-radius:10px;padding:16px;margin-bottom:14px}summary,button{cursor:pointer}.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}label{display:grid;align-content:start;gap:4px;font-size:13px}input,select,button{font:inherit;color:inherit}input,select{width:100%;min-width:0;padding:7px;background:#fafaf7;border:1px solid #a6b4af;border-radius:5px}input[type=checkbox]{width:auto}button{background:#155f56;color:white;border:0;padding:9px 12px;border-radius:5px}button.secondary{background:#e6efea;color:#174c43}button:disabled{background:#adb6b3;color:#384540;cursor:default}.actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.metrics{display:flex;gap:22px;flex-wrap:wrap}.metrics strong{font-size:26px;display:block}svg{display:block;width:100%;max-height:410px;background:#f8faf7;margin:10px 0}svg circle{cursor:pointer}.status{padding:10px;background:#eef4ed;border-left:4px solid #45866c}.bad{background:#fff0e5;border-color:#a85120}.note{font-size:13px;margin:7px 0}.legend{font-size:13px;color:#49615b}.check{display:flex;align-items:center;gap:8px;margin-top:12px}@media(max-width:780px){main{display:flex;flex-direction:column}article{order:-1}main,header{padding:14px}.metrics strong{font-size:20px}}
@@ -84,8 +84,9 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 }
 @media(max-height:550px){#viewerAdjust{max-height:28dvh}}
 </style><link rel="stylesheet" href="motopack.css">
+<dialog class="cbDialog" id="tipDialog" aria-labelledby="tipTitle"><h2 id="tipTitle">Buy me a beer</h2><img width="220" height="220" src="website/venmo.png" alt="Scan to tip Kevin on Venmo"><p><a href="https://venmo.com/code?user_id=4574590965647306065&amp;created=1795357067" target="_blank" rel="noopener noreferrer">Open @Kevdogktm in Venmo</a></p><form method="dialog"><button>Close</button></form></dialog>
 <dialog id="batteryWizard" aria-labelledby="bwHeading" class="cbDialog"><form id="bwForm">
-  <div class="bwBar"><b>motoPack</b><span>Battery pack wizard</span><label class="bwUnits">Units<select id="bwUnits" aria-label="Measurement units"><option value="mm">Metric · mm</option><option value="in">Imperial · in</option></select></label><div id="bwSupport"></div></div>
+  <div class="bwBar"><b>motoPack</b><span>Battery pack wizard</span><label class="bwUnits">Units<select id="bwUnits" aria-label="Measurement units"><option value="mm">Metric · mm</option><option value="in">Imperial · in</option></select></label><button type="button" data-tip>Buy me a beer</button><div id="bwSupport"></div></div>
   <header><small id="bwStep"></small><progress id="bwProgress" max="7" value="1" aria-label="Wizard progress"></progress><output id="bwSize" aria-live="polite"></output><h2 id="bwHeading" tabindex="-1">Build a battery pack</h2><p id="bwIntro"></p></header>
   <section>
     <fieldset class="bwChoices"><legend>Start with</legend>
@@ -147,8 +148,8 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 <dialog id="sharedViewer" class="cbDialog"><h2 id="sharedTitle">Shared design</h2><p id="sharedBy"></p><div id="sharedScene"></div><p id="sharedNotes"></p><p id="sharedStatus" role="status"></p><button data-open-library>Public library</button> <button data-close-share>Close</button></dialog>
 <dialog id="buildDashboard" class="cbDialog"><h2>My builds</h2><p id="dashboardScope"></p><div class="actions"><button id="dashBattery">New battery pack</button><button id="dashMoto">New motorcycle conversion</button></div><p role="status" id="dashboardStatus"></p><div id="dashboardList"></div><button data-open-library>Public library</button><button id="dashClose" class="secondary">Close</button></dialog>
 <dialog id="welcome" aria-labelledby="welcomeTitle">
-<div class="landingNav"><a href="https://electricmotogarage.com"><b class="brandMark">EMG</b> Electric Moto Garage</a><button data-open-library>Public library</button><button id="landingDashboard">My builds</button><button id="landingResume" class="secondary" hidden>Resume current build</button><button id="landingBuilder" class="secondary">Advanced builder</button></div>
-<div class="landingBody"><div class="landingHero"><div><span class="productName">motoPack</span><h1 id="welcomeTitle">What are you building?</h1>
+<div class="landingNav"><a href="https://electricmotogarage.com"><b class="brandMark">EMG</b> Electric Moto Garage</a><button data-open-library>Public library</button><button type="button" data-tip>Buy me a beer</button><button id="landingDashboard">My builds</button><button id="landingResume" class="secondary" hidden>Resume current build</button><button id="landingBuilder" class="secondary">Advanced builder</button></div>
+<div class="landingBody"><div class="landingHero"><div><span class="productName">MotoPack Lithium Battery Builder</span><h1 id="welcomeTitle">What are you building?</h1>
 <p>Start with a battery pack, or plan a dirt bike conversion around your frame and motor. Each guide opens your design in the 3D editor.</p>
 <button class="startBuild" id="landingBattery">Build a battery pack</button> <button class="startBuild" id="landingStart">Plan a dirt bike conversion</button><small>The conversion guide includes a KTM practice frame and a QS138 motor.</small></div>
 <figure><div id="heroImage" class="storyImage" role="img" aria-label="Finished electric motocross bike concept"></div><figcaption id="heroCaption">Finished electric build · concept render</figcaption></figure></div>
@@ -157,7 +158,7 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 <div class="consult"><div><h2>Build it with Kevin</h2><p>A one-on-one build consult is $50. The full $50 goes toward any product you purchase from Electric Moto Garage.</p></div><a href="https://electricmotogarage.com/">Contact Electric Moto Garage</a></div></div></dialog>
 <header class="mast">
   <h1><button id="homeLink" title="Open welcome page">motoPack</button></h1>
-  <button id="topDashboard">My builds</button>
+  <button type="button" data-tip>Buy me a beer</button><button id="topDashboard">My builds</button>
   <div class="projectTools"><button id="toggleMenu" aria-controls="projectMenu" aria-expanded="false">Tools ▾</button>
     <nav id="projectMenu" aria-label="Project tools" hidden>
       <div><strong>Start a build</strong><button id="batteryWizardMenu">Battery pack wizard</button><button id="conversionOpen">Dirt bike conversion</button><button id="newTop">Blank design</button></div>

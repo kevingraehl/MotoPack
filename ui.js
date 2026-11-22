@@ -1,4 +1,5 @@
 const $=id=>document.getElementById(id);
+const builderApi=location.pathname.startsWith('/motopack-lithium-battery-builder/app')?'/motopack-lithium-battery-builder/api':'/MotoPack';
 const defaults={axis:'vertical',pattern:'offset',cols:5,rows:8,banks:3,cellModel:"p42a",d:21.55,len:70.15,gap:1.5,shift:50,series:20,
   material:'none',sheet:0.25,mediaShape:'flex',place:'rows',edgeU:1.5,edgeV:1.5,plate:4,slack:0.3,lip:0.8,land:1,
   length:164,width:116,high:293.5,low:252.5,ref:210.6,headroom:13,holder:true};

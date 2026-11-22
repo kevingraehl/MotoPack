@@ -2,7 +2,7 @@ import {designRequest} from './designs.mjs';
 import {cleanBugReport,reportLimit} from './bug-report.mjs';
 import {account} from './account.mjs';
 const path='/MotoPack';
-const site='https://electricmotogarage.com';
+
 const reply=(text,status)=>new Response(text,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 function cleanSummary(input){
   const {dimensions,outline,axis,pattern,cells,series,banks,parts}=input;
@@ -17,7 +17,7 @@ function cleanSummary(input){
 }
 async function submit(request,env,kind){
   const bug=kind==='bug-report';
-  if(request.headers.get('Origin')!==site)return reply('Submit through motoPack.',403);
+  if(request.headers.get('Origin')!==new URL(request.url).origin)return reply('Submit through motoPack.',403);
   if(request.headers.get('Content-Type')?.split(';')[0]!=='application/json')return reply('Expected JSON.',415);
   if(!request.body)return reply('A summary is required.',400);
   const limit=bug?reportLimit:100000;
@@ -48,7 +48,7 @@ async function submit(request,env,kind){
 }
 async function visit(request,env){
   if(request.method!=='POST')return reply('Use POST.',405);
-  if(request.headers.get('Origin')!==site)return reply('Start through motoPack.',403);
+  if(request.headers.get('Origin')!==new URL(request.url).origin)return reply('Start through motoPack.',403);
   if(request.headers.get('Content-Type')?.split(';')[0]!=='application/json')return reply('Expected JSON.',415);
   if(Number(request.headers.get('Content-Length'))>1024)return reply('Check-in too large.',413);
   const ip=request.headers.get('CF-Connecting-IP')||'unknown';

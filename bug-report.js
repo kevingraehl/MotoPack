@@ -65,7 +65,7 @@
     for(const id of ['bugClose','bugFile','bugRemove','bugText','bugSend'])$(id).disabled=true;
     result.textContent='Sending report…';
     try{
-      const res=await fetch('/MotoPack/bug-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({view,description,screenshot:preview.getAttribute('src')})});
+      const res=await fetch(builderApi+'/bug-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({view,description,screenshot:preview.getAttribute('src')})});
       const id=res.headers.get('X-MotoPack-Receipt');
       if(res.status!==201||!id)throw Error(res.status===429?'Please retry in a minute.':'Your report could not be sent. Your description and screenshot are still here.');
       result.textContent='Report received by EMG. Reference '+id.slice(0,8)+'.';$('bugClose').textContent='Done';

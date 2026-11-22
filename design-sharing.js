@@ -71,7 +71,7 @@ function drawSharedDesign(host,design){
   const share=$('shareDesign'),library=$('designLibrary'),viewer=$('sharedViewer');
   let dispose,cursor=null,viewRequest=0;
   async function api(suffix='',options){
-    const response=await fetch('/MotoPack/designs'+suffix,options);
+    const response=await fetch(builderApi+'/designs'+suffix,options);
     const data=await response.json().catch(()=>({error:'Design sharing is unavailable on this host.'}));
     if(!response.ok||data.error)throw Error(data.error||'Could not load designs.');return data;
   }

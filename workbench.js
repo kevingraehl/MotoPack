@@ -94,6 +94,7 @@ function initWorkbench(){
     if(c.mode==='pack')endLift[1]=endLift[0];else fields.low.value=c.high;render();
   };
   setupHints();
+  for(const button of document.querySelectorAll('[data-tip]'))button.onclick=()=>$('tipDialog').showModal();
   setupSectionOrder();
 }
 
@@ -235,7 +236,20 @@ function installNumberArrows(control,wrap,label){
 }
 
 function setupSectionOrder(){
-  const panel=$('controls'),key='cellbench.sectionOrder';
+  const sidebar=$('controls'),panel=document.createElement('div'),key='cellbench.sectionOrder';
+  panel.append(...sidebar.children);
+  const label=document.createElement('label'),pick=document.createElement('select');
+  label.className='settingsPicker';label.append('What do you want to edit?',pick);sidebar.append(label,panel);
+  const groups=[
+    ['Pack size and cells',['Pack target','Cell array']],
+    ['Case and fit',['Case builder','Inside dimensions and bench reference']],
+    ['Insulation and holders',['Separator','Fishpaper, wrap and balance wires','Cell holders · STL','Squigglies™ spacers · STEP / STL']],
+    ['Battery management',['ANT / custom BMS editor']],
+    ['Bike and motor',['Parts library & frame layout']],
+    ['Presets and saved builds',['Starting layouts','Series layouts','My designs']]
+  ];
+  for(const [name] of groups)pick.add(new Option(name,name));
+  pick.add(new Option('All settings · customize order','all'));
   const sections=[...panel.children].map(content=>{
     const row=document.createElement('div');row.className='setupGroup';content.replaceWith(row);row.append(content);return row;
   }),titles=new Map();
@@ -248,6 +262,7 @@ function setupSectionOrder(){
     const header=section.querySelector('h2,summary'),title=header.textContent;
     const id=section.firstElementChild.querySelector('[id]')?.id||title;
     titles.set(id,section);section.dataset.orderId=id;
+    section.dataset.topic=groups.find(([,names])=>names.includes(title.trim()))?.[0]||'Pack size and cells';
     const buttons=document.createElement('span');buttons.className='orderButtons';
     for(const [action,icon] of [['to top','⇈'],['up','↑'],['down','↓']]){
       const button=document.createElement('button');
@@ -279,6 +294,24 @@ function setupSectionOrder(){
       const [top,up,down]=section.querySelectorAll('.orderButtons button');top.disabled=up.disabled=!section.previousElementSibling;down.disabled=!section.nextElementSibling;
     }
   }
+  function showTopic(topic){
+    pick.value=topic;
+    for(const section of sections){
+      section.hidden=topic!=='all'&&section.dataset.topic!==topic;
+      section.querySelector('.orderButtons').hidden=topic!=='all';
+      const header=section.querySelector('h2,summary');
+      header.draggable=topic==='all';header.style.cursor=topic==='all'?'grab':'';
+      header.title=topic==='all'?'Drag to reorder':'';
+    }
+    sidebar.scrollTop=0;
+  }
+  pick.onchange=()=>showTopic(pick.value);
+  document.addEventListener('click',event=>{
+    const targets={goFrame:'frameImport',editBms:'bmsSetup',wWires:'surfaceEditor',wLiner:'surfaceEditor'};
+    const section=$(targets[event.target.closest('button')?.id])?.closest('.setupGroup');
+    if(section?.hidden)showTopic(section.dataset.topic);
+  },true);
+  showTopic(groups[0][0]);
   refresh();
 }
 
