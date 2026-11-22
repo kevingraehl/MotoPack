@@ -37,6 +37,15 @@ function bwConvert(scale){
 function bwDimensions(values){
   return values.map(n=>Number((n/bwScale).toFixed(bwScale===1?2:3))).join(' × ')+(bwScale===1?' mm':' in');
 }
+const bwAntSizes={150:[190,70,25],300:[180,72,25]};
+for(const [rating,size] of Object.entries(bwAntSizes)){
+  $('bwAnt'+rating).onclick=()=>{
+    ['bwBL','bwBW','bwBH'].forEach((id,i)=>{
+      $(id).dataset.mm=size[i];$(id).value=Number((size[i]/bwScale).toFixed(8));
+    });
+    $('bwError').textContent='';bwRefresh();
+  };
+}
 function bwConfig(){
   const num=bwNumber,cavity=bwForm.elements.bwBasis.value==='cavity';
   const cell=cellSettings($('bwCell').value),voltage=$('bwElectrical').value==='volts';
@@ -124,6 +133,9 @@ function bwRefresh(){
   const voltage=$('bwElectrical').value==='volts';
   $('bwSeriesLabel').hidden=voltage;$('bwVoltsLabel').hidden=!voltage;$('bwParallelLabel').hidden=cavity;
   $('bwShiftLabel').hidden=$('bwPattern').value==='regular';$('bwSheets').hidden=!['printed','FR4','fish','card'].includes($('bwMaterial').value);$('bwBmsDims').hidden=$('bwBms').value==='off';
+  for(const [rating,size] of Object.entries(bwAntSizes))$('bwAnt'+rating+'Size').textContent=bwDimensions(size);
+  const mount=$('bwBms').value;
+  $('bwCaseBms').textContent=mount==='off'?'BMS space is unreserved. Go back one step to choose its location and size.':'BMS space included ('+mount.toLowerCase()+') · '+bwDimensions(['bwBL','bwBW','bwBH'].map(bwNumber))+'. Allow room for the cable exits.';
   const c=bwConfig();
   $('bwElectricHint').textContent=c.series+' groups in series × '+c.nominal+' V = '+fmt(c.volts)+' V nominal. '+(cavity?'The wizard fills each parallel group equally using the space available.':c.parallel+' cells in each group gives '+fmt(c.parallel*c.cellAh)+' Ah.');
   if(cavity&&bwPage===2&&c.series>0){
