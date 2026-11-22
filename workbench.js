@@ -205,7 +205,7 @@ function installNumberArrows(control,wrap,label){
     if(control.disabled)return false;
     const before=control.value;
     const min=control.min===''?-Infinity:Number(control.min),max=control.max===''?Infinity:Number(control.max);
-    const next=Math.max(min,Math.min(max,(control.valueAsNumber||0)+dir));
+    const next=Math.max(min,Math.min(max,(control.valueAsNumber||0)+dir*Number(control.dataset.nudge||1)));
     control.value=Number(next.toFixed(7));
     if(before===control.value)return false;
     control.dispatchEvent(new Event('input',{bubbles:true}));return true;

@@ -119,12 +119,17 @@ function queueWizardPreview(){
   wizardPreviewFrame=requestAnimationFrame(()=>{
     if(!batteryWizard.open)return;
     const host=$('bwStage'),status=$('bwLiveStatus');
+    $('bwRowGain').textContent='';
     $('bwSize').textContent='Pack size unavailable'+(bwForm.elements.bwBasis.value==='cavity'?' · Inside space '+bwDimensions(['bwL','bwW','bwH'].map(bwNumber)):'');
     try{
       const invalid=[...bwForm.querySelectorAll('input[type=number]')].some(el=>!el.parentElement.closest('[hidden]')&&!el.validity.valid);
       if(invalid)throw Error('Enter a value in the highlighted field to see the layout.');
       const c=bwConfig(),plan=bwMakePlan(c,bwLayout(c));
       const shell=wizardCaseBounds(c,plan.m);
+      if(c.squiggleOn){
+        const gaps=c.cols-1;
+        $('bwRowGain').textContent='Full row of '+c.cols+' cells · '+gaps+' gaps add '+bwDimensions([gaps*c.gap])+' · '+bwDimensions([c.cols*c.d+gaps*c.gap])+' wrap to wrap.';
+      }
       $('bwSize').textContent='Pack '+bwDimensions(shell.pack)+' · Case outside '+bwDimensions(shell.outside)+' (L × W × H)';
       wizardView??=createWizardView(host);wizardView.update(plan,shell);
       let first=1;

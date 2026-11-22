@@ -46,6 +46,13 @@ for(const [rating,size] of Object.entries(bwAntSizes)){
     $('bwError').textContent='';bwRefresh();
   };
 }
+const bwNudges=bwForm.querySelectorAll('[data-bw-nudge]');
+for(const button of bwNudges)button.onclick=()=>{
+  const input=$('bwInRow'),step=bwScale===1?.1:.001;
+  const mm=Math.max(0,Math.min(20,(bwNumber(input.id)||0)+Number(button.dataset.bwNudge)*step*bwScale));
+  input.dataset.mm=mm;input.value=Number((mm/bwScale).toFixed(8));
+  $('bwError').textContent='';bwRefresh();
+};
 function bwConfig(){
   const num=bwNumber,cavity=bwForm.elements.bwBasis.value==='cavity';
   const cell=cellSettings($('bwCell').value),voltage=$('bwElectrical').value==='volts';
@@ -124,7 +131,8 @@ $('bwReviewBank').onchange=bwDrawBank;
 function bwRefresh(){
   const cavity=bwForm.elements.bwBasis.value==='cavity',up=$('bwAxis').value==='vertical';
   const squiggle=$('bwMaterial').value==='squiggle';
-  $('bwInRowLabel').hidden=!squiggle;
+  $('bwInRowLabel').hidden=$('bwRowTune').hidden=!squiggle;
+  for(const button of bwNudges)button.textContent=(button.dataset.bwNudge==='1'?'+':'−')+(bwScale===1?'0.1 mm':'0.001 in');
   $('bwGapCaption').textContent=squiggle?'Gap between rows':'Gap between cell bodies';
   $('bwDims').hidden=!cavity;
   $('bwCaseControl').hidden=!cavity&&bwPage<5;
