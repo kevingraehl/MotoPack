@@ -263,7 +263,7 @@ function squiggleHolder(c,m,guards=true,enforceWidth=true,{includeCells=false,bu
       const x=Math.floor(cell.u/pitch),y=Math.floor(cell.v/pitch);
       for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
         const nearby=bins.get([x+dx,y+dy].join('/'))||[];
-        if(nearby.some(p=>Math.hypot(p.u-cell.u,p.v-cell.v)<pitch-.0001))
+        if(nearby.some(p=>(c.sqDirection==='columns'?p.k!==cell.k:p.r!==cell.r)&&Math.hypot(p.u-cell.u,p.v-cell.v)<pitch-.0001))
           throw Error('Vented walls need room for the wall between cells. Increase the row or cell gap, or reduce the row offset.');
       }
       const key=[x,y].join('/');

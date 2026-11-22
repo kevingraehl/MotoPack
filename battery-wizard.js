@@ -54,7 +54,7 @@ function bwConfig(){
   return {...defaults,...cell,mode:cavity?'inner':'pack',length:num('bwL'),width:num('bwW'),high:num('bwH'),low:num('bwH'),
     axis:$('bwAxis').value,banks:Number($('bwBanks').value)||1,series,volts:series*cell.nominal,parallel:num('bwParallel'),capacityMode:'parallel',targetMode:'series',
     wall:1.6,base:1.6,...Object.fromEntries(bwFaces.map(f=>[f.toLowerCase(),num('bw'+f)])),
-    holder,squiggleOn:choice==='squiggle',sqStyle:'rails',sqRailLength:cell.len,pattern:$('bwPattern').value==='regular'?'regular':'custom',shift:num('bwShift'),gap:num('bwGap'),rowGap:num('bwGap'),
+    holder,squiggleOn:choice==='squiggle',sqStyle:'rails',sqRailLength:cell.len,pattern:$('bwPattern').value==='regular'?'regular':'custom',shift:num('bwShift'),gap:num(choice==='squiggle'?'bwInRow':'bwGap'),rowGap:num('bwGap'),
     material,sheet:material==='none'?0:num('bwSheet'),mediaShape:['FR4','printed','card'].includes(material)?'rigid':'flex',
     place:place==='both'?'rows':place,locations:material==='none'?[]:place==='both'?['rows','banks']:[place],
     bmsMode:face==='off'?'off':'mount',bmsMount:'0/'+(face==='off'?'Top':face),bmsL:num('bwBL'),bmsW:num('bwBW'),bmsH:num('bwBH'),
@@ -123,6 +123,9 @@ function bwDrawBank(){
 $('bwReviewBank').onchange=bwDrawBank;
 function bwRefresh(){
   const cavity=bwForm.elements.bwBasis.value==='cavity',up=$('bwAxis').value==='vertical';
+  const squiggle=$('bwMaterial').value==='squiggle';
+  $('bwInRowLabel').hidden=!squiggle;
+  $('bwGapCaption').textContent=squiggle?'Gap between rows':'Gap between cell bodies';
   $('bwDims').hidden=!cavity;
   $('bwCaseControl').hidden=!cavity&&bwPage<5;
   $('bwOpacityValue').value=$('bwOpacity').value+'%';

@@ -264,9 +264,10 @@ function render(){
     endMenu.options[1].text=c.axis==='vertical'?'Top only':'Near end only (+ axis)';
     endMenu.options[2].text=c.axis==='vertical'?'Bottom only':'Far end only (− axis)';
     $('sqStripChoice').parentElement.hidden=!rails||!oneBank;
-    const gapKey=c.sqDirection==='columns'?'rowGap':'gap';
-    if(document.activeElement!==$('sqGap'))$('sqGap').value=c[gapKey];
-    $('sqGapLabel').textContent=c.sqDirection==='columns'?'Gap along a column (mm)':'Gap along a row (mm)';
+    if(document.activeElement!==$('sqGap'))$('sqGap').value=c.gap;
+    if(document.activeElement!==$('sqAcrossGap'))$('sqAcrossGap').value=c.rowGap;
+    const fullRowGaps=c.cols-1,added=fullRowGaps*c.gap;
+    $('sqRowWidth').textContent=c.cols+' cells in a full row · '+fullRowGaps+' gaps add '+fmt(added)+' mm · '+fmt(c.cols*c.d+added)+' mm from wrap to wrap.';
     $('snugGroups').hidden=!c.sqGroupsOnly;
     try{
       const bank=oneBank?Number(bankMenu.value):m.bankCells.findIndex(cells=>cells.length);
@@ -296,16 +297,20 @@ function render(){
     for(const id of ['partReport','sheetInfo','fitSeries','count','group','size','bench','compare','holderDims','printMsg','side','ends']) $(id).textContent='';
   }
 }
+for(const button of document.querySelectorAll('[data-row-gap]'))button.onclick=()=>{
+  $('sqGap').value=button.dataset.rowGap;
+  $('sqGap').dispatchEvent(new Event('input',{bubbles:true}));
+};
 $('controls').addEventListener('input',event=>{
-  if(event.target.id==='sqGap'&&event.target.checkValidity()){
-    fields[fields.sqDirection.value==='columns'?'rowGap':'gap'].value=event.target.value;
+  if(['sqGap','sqAcrossGap'].includes(event.target.id)&&event.target.value!==''&&event.target.checkValidity()){
+    fields[event.target.id==='sqGap'?'gap':'rowGap'].value=event.target.value;
   }
   if(['sqStyle','sqCapVentWidth','sqVentWidth','gap','rowGap','sqGap','sqWall'].includes(event.target.id)&&Number($(fields.sqStyle.value==='rails'?'sqVentWidth':'sqCapVentWidth').value)>0){
-    for(const key of ['gap','rowGap'])fields[key].value=Math.max(+fields[key].value,+fields.sqWall.value);
-    if(event.target.id==='sqGap')event.target.value=fields[fields.sqDirection.value==='columns'?'rowGap':'gap'].value;
+    const across=fields.sqDirection.value==='columns'?'gap':'rowGap';
+    if(['sqStyle','sqCapVentWidth','sqVentWidth','sqWall'].includes(event.target.id))fields[across].value=Math.max(+fields[across].value,+fields.sqWall.value);
     $('sqGroupsOnly').checked=false;
   }
-  if(['sqStyle','sqCapVentWidth','sqVentWidth','sqVentShape','sqRailLength','sqGap','sqWall','sqRootStyle','sqRootChamfer','sqRootLive','sqGroupsOnly'].includes(event.target.id)){
+  if(['sqStyle','sqCapVentWidth','sqVentWidth','sqVentShape','sqRailLength','sqGap','sqAcrossGap','sqWall','sqRootStyle','sqRootChamfer','sqRootLive','sqGroupsOnly'].includes(event.target.id)){
     $('squiggleOn').checked=true;$('spacers').checked=true;
   }
   if(event.target.id==='squiggleOn'&&event.target.checked)$('spacers').checked=true;
