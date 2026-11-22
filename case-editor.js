@@ -230,7 +230,8 @@ function initCaseEditor(){
     $('useDemoOutline').hidden=!practice?.outline||!d.scale||d.points.length>0;
     $('skSmooth').disabled=d.points.length<4;
     $('skPull').disabled=!d.image||d.points.length<2;
-    $('skClose').disabled=d.closed||d.points.length<3;
+    $('skFinishLine').disabled=$('skClose').disabled=d.closed||d.points.length<3;
+    $('skFewer').disabled=!d.closed||!d.scale;
     $('skScaleInfo').textContent=d.scale?(d.points.length?(()=>{const b=sketchBounds(d.points);return fmt(b.w*d.scale)+' × '+fmt(b.h*d.scale)+' mm · ';})():'')+(cadScale?'Scale set by CAD · millimeters':'Grid in millimeters'):'Scale required before applying this outline.';
   }
   function sync(){
@@ -342,6 +343,7 @@ function initCaseEditor(){
     if(d.step)d.original=false;
     sync();paint();
   }
+  $('skFinishLine').onclick=()=>$('skClose').click();
   $('skClose').onclick=()=>{
     const raw=cleanLoop(d.points);
     let points=raw;
@@ -353,6 +355,27 @@ function initCaseEditor(){
       checkOutline(points);
     }catch(e){message(e.message,true);$('skValidity').textContent=e.message;return;}
     remember();d.points=points;d.closed=true;mode('edit');paint();
+  };
+  function simplifyPath(points,tolerance){
+    const keep=new Set([0,points.length-1]),ranges=[[0,points.length-1]];
+    while(ranges.length){
+      const [a,b]=ranges.pop();let split=-1,max=tolerance;
+      for(let i=a+1;i<b;i++){
+        const dist=pathDistance(points[i],points[a],points[b]);
+        if(dist>max){split=i;max=dist;}
+      }
+      if(split>=0){keep.add(split);ranges.push([a,split],[split,b]);}
+    }
+    return points.filter((_,i)=>keep.has(i));
+  }
+  $('skFewer').onclick=()=>{
+    const input=$('skTolerance');
+    if(!input.reportValidity()||!(input.valueAsNumber>0))return;
+    const before=d.points.length;
+    const result=simplifyPath([...d.points,d.points[0]],input.valueAsNumber/d.scale).slice(0,-1);
+    try{checkOutline(result);}catch{message('This tolerance removes too much of the outline. Try a smaller value.',true);return;}
+    if(result.length===before){message('All remaining corners are needed at this tolerance.');return;}
+    applyTrace(result);message(before+' sides reduced to '+result.length+'. Check the fit, or use Undo to restore the outline.');
   };
   $('skSmooth').onclick=()=>{
     const points=smoothTrace(d.points,smoothingLimit(),d.closed);
@@ -413,9 +436,13 @@ function initCaseEditor(){
   const edge=frameEdgeAssist();
   board.onpointerleave=()=>{edge.clear();hover=null;drawGuide();};
   function assist(p,track){return edge.pull(p,d,board.getScreenCTM().a,track,false,tool==='frameTrace');}
+  function gridPoint(p){
+    if(!$('skSnap').checked||!d.scale)return p;
+    const step=(+$('skGrid').value||10)/d.scale;return p.map(n=>Math.round(n/step)*step);
+  }
   function snapped(p,e){
     if(tool==='draw'||traceTool())p=assist(p);
-    if($('skSnap').checked&&d.scale){const step=(+$('skGrid').value||10)/d.scale;p=p.map(n=>Math.round(n/step)*step);}
+    p=gridPoint(p);
     if(d.points.length&&tool==='draw'&&$('skAxis').value!=='free'){
       const fixed=$('skAxis').value==='x'?1:0;p[fixed]=d.points.at(-1)[fixed];
     }else if(e.shiftKey&&d.points.length&&tool==='draw'){
@@ -437,6 +464,18 @@ function initCaseEditor(){
     remember();d.selected=null;points.push(q);hover=null;paint();
   }
   $('skAxis').onchange=()=>{mode('draw');paint();};
+  function addStrokePoint(p){
+    p=gridPoint(p);const last=d.points.at(-1);
+    if(d.points.length<1500&&Math.hypot(p[0]-last[0],p[1]-last[1])>1e-6)d.points.push(p);
+  }
+  function sampleStroke(p){
+    const prev=drag.previous,dx=p[0]-prev[0],dy=p[1]-prev[1],length=Math.hypot(dx,dy);
+    let distance=drag.remaining;
+    while(distance<=length&&d.points.length<1500){
+      addStrokePoint([prev[0]+dx*distance/length,prev[1]+dy*distance/length]);distance+=drag.spacing;
+    }
+    drag.remaining=distance-length;drag.previous=p;
+  }
   board.onpointerdown=e=>{
     if(!e.isPrimary||drag||(e.button===0&&e.ctrlKey)||e.button!==0&&e.button!==1)return;e.preventDefault();board.focus({preventScroll:true});board.setPointerCapture(e.pointerId);
     const p=point(e),idx=e.target.dataset.vertex;
@@ -468,7 +507,12 @@ function initCaseEditor(){
       if(tool==='draw'&&d.points.length>=3&&Math.hypot(p[0]-d.points[0][0],p[1]-d.points[0][1])*board.getScreenCTM().a<9){$('skClose').click();return;}
       if(tool==='draw'&&e.pointerType==='touch'&&d.points.length){drag={line:true};hover=snapped(p,e);drawGuide();return;}
       if(tool==='draw'){addLine(snapped(p,e));return;}
+      if(tool==='pen'&&d.scale&&(!$('skDotStep').reportValidity()||!($('skDotStep').valueAsNumber>0)))return;
+      if(d.points.length>=1500){message('Outline point limit reached. Increase dot spacing for a longer trace.',true);return;}
       const priorRedo=redo;remember();d.selected=null;hover=null;d.points=[...d.points,snapped(p,e)];if(traceTool())d.freehandTrace=true;if(traceTool())drag={pen:true,priorRedo,startIndex:d.points.length-1,matrix:board.getScreenCTM().inverse()};
+      if(tool==='pen'&&d.scale){
+        drag.spacing=$('skDotStep').valueAsNumber/d.scale;drag.remaining=drag.spacing;drag.previous=assist(p);d.freehandTrace=false;
+      }
     }else message('Use Edit points to change this outline, or Clear outline to start a new trace.');
     paint();
   };
@@ -486,21 +530,19 @@ function initCaseEditor(){
       else{const r=Math.hypot(u-x,v-y);d.points=Array.from({length:64},(_,i)=>[x+r*Math.cos(i*Math.PI/32),y+r*Math.sin(i*Math.PI/32)]);}
     }else if(drag.pen){
       const pos=new DOMPoint(e.clientX,e.clientY).matrixTransform(drag.matrix),p=assist([pos.x,pos.y],drag),last=d.points.at(-1);
-      if(d.points.length<1500&&Math.hypot(p[0]-last[0],p[1]-last[1])*board.getScreenCTM().a>5)d.points.push(p);
+      if(drag.spacing)sampleStroke(p);
+      else if(d.points.length<1500&&Math.hypot(p[0]-last[0],p[1]-last[1])*board.getScreenCTM().a>5)addStrokePoint(p);
     }else{d.points[drag.vertex]=snapped(point(e),e);d.selected=null;}
     paint();
   };
   board.onpointerup=e=>{if(!e.isPrimary)return;
     if(drag?.line){drag=null;hover=null;addLine(snapped(point(e),e));drawGuide();return;}
-    if(drag?.pen){
-      const start=drag.startIndex,points=d.points.slice(start),keep=new Set([0,points.length-1]),ranges=[[0,points.length-1]];
-      const tolerance=1.4*drag.matrix.a;
-      while(ranges.length){
-        const [a,b]=ranges.pop();let far=-1,max=tolerance;
-        for(let i=a+1;i<b;i++){const dist=pathDistance(points[i],points[a],points[b]);if(dist>max){far=i;max=dist;}}
-        if(far>=0){keep.add(far);ranges.push([a,far],[far,b]);}
-      }
-      d.points=d.points.slice(0,start).concat(points.filter((_,i)=>keep.has(i)));paint();
+    if(drag?.spacing){
+      const end=assist(point(e),drag);sampleStroke(end);addStrokePoint(end);paint();
+      if(d.points.length>=1500)message('Point limit reached. Undo and increase dot spacing for a longer trace.',true);
+    }else if(drag?.pen){
+      const start=drag.startIndex;
+      d.points=d.points.slice(0,start).concat(simplifyPath(d.points.slice(start),1.4*drag.matrix.a));paint();
     }
     const wasDrawing=drag&&!drag.pan;if(drag?.shape&&d.points.length>=3&&Math.abs(sketchArea(d.points))>1e-8){d.closed=true;mode('edit');paint();}drag=null;if(wasDrawing){liveKey='';queueFill();}};
   board.onpointercancel=()=>{if(drag?.shape)history(false);drag=null;};
