@@ -140,7 +140,7 @@ function initCaseEditor(){
     message(({arc:'Pick a start, a point on the curve, then its end. An existing outline supplies the start.',rectangle:'Drag between opposite corners of the rectangle.',circle:'Drag from the center to the edge of the circle.',draw:'Click each corner, then click the first point to close. Hold Shift for a horizontal or vertical edge.',pen:'Drag to trace a continuous outline. Release, then close the outline.',edit:'Drag a corner to move it. Double-click an edge to insert a point. Delete removes the selected corner.',pan:'Drag to pan. Scroll to zoom around the pointer.',scale:'Click both ends of a known length in the drawing.'})[next]);
   }
   function remember(){undo.push({...d,points:d.points.map(p=>[...p])});if(undo.length>50)undo.shift();redo=[];}
-  function history(forward){const from=forward?redo:undo,to=forward?undo:redo;if(!from.length)return;to.push(d);d=from.pop();selection=-1;cal=[];mode(d.closed?'edit':'pen');sync();paint();}
+  function history(forward){const from=forward?redo:undo,to=forward?undo:redo;if(!from.length)return;to.push(d);d=from.pop();selection=-1;cal=[];mode(d.closed?'edit':tool==='arc'?'arc':'draw');sync();paint();}
   function viewBox(v){viewport=v;board.setAttribute('viewBox',[v.x,v.y,v.w,v.h].join(' '));}
   function fit(){
     const all=[...d.points,...(d.loops||[]).flat()];
@@ -407,11 +407,27 @@ function initCaseEditor(){
   function snapped(p,e){
     if(tool==='draw'||tool==='pen')p=assist(p);
     if($('skSnap').checked&&d.scale){const step=(+$('skGrid').value||10)/d.scale;p=p.map(n=>Math.round(n/step)*step);}
-    if(e.shiftKey&&d.points.length&&tool==='draw'){
+    if(d.points.length&&tool==='draw'&&$('skAxis').value!=='free'){
+      const fixed=$('skAxis').value==='x'?1:0;p[fixed]=d.points.at(-1)[fixed];
+    }else if(e.shiftKey&&d.points.length&&tool==='draw'){
       const last=d.points.at(-1),axis=Math.abs(p[0]-last[0])>Math.abs(p[1]-last[1])?1:0;p[axis]=last[axis];
     }
     return p;
   }
+  function addLine(q){
+    const points=d.points,last=points.at(-1),prev=points.at(-2),epsilon=.00001;
+    if(last){
+      let conflict=Math.hypot(last[0]-q[0],last[1]-q[1])<epsilon;
+      if(prev)conflict ||= pathDistance(q,prev,last)<epsilon||pathDistance(prev,last,q)<epsilon;
+      for(let i=0;!conflict&&i<points.length-2;i++){
+        const a=points[i],b=points[i+1];
+        conflict=segmentsCross(a,b,last,q)||pathDistance(q,a,b)<epsilon||pathDistance(a,last,q)<epsilon||pathDistance(b,last,q)<epsilon;
+      }
+      if(conflict){message('This line crosses or overlaps the outline. Pick another endpoint or undo the previous line.',true);return;}
+    }
+    remember();d.selected=null;points.push(q);hover=null;paint();
+  }
+  $('skAxis').onchange=()=>{mode('draw');paint();};
   board.onpointerdown=e=>{
     if(!e.isPrimary||drag||(e.button===0&&e.ctrlKey)||e.button!==0&&e.button!==1)return;e.preventDefault();board.focus({preventScroll:true});board.setPointerCapture(e.pointerId);
     const p=point(e),idx=e.target.dataset.vertex;
@@ -425,9 +441,9 @@ function initCaseEditor(){
       }
       cal.push([...anchor]);if(cal.length===2){$('skMeasure').hidden=false;$('skDistance').focus();message('Enter the real distance between the two orange points.');}else message('Now click the other end of the measured length.');
     }else if(tool==='edit'){
-      selection=idx===undefined?-1:Number(idx);if(selection>=0){remember();drag={vertex:selection};}
+      selection=idx===undefined?-1:Number(idx);if(selection>=0){drag={vertex:selection,priorRedo:redo};remember();}
     }else if(tool==='rectangle'||tool==='circle'){
-      remember();d.freehandTrace=false;d.selected=null;d.closed=false;d.points=[];drag={shape:tool,start:snapped(p,e)};
+      drag={shape:tool,start:snapped(p,e),priorRedo:redo};remember();d.freehandTrace=false;d.selected=null;d.closed=false;d.points=[];
     }else if(tool==='arc'&&!d.closed){
       const q=snapped(p,e);
       if(!d.points.length){remember();d.points=[q];message('Pick a point on the curve.');}
@@ -442,7 +458,8 @@ function initCaseEditor(){
     }else if(!d.closed){
       if(tool==='draw'&&d.points.length>=3&&Math.hypot(p[0]-d.points[0][0],p[1]-d.points[0][1])*board.getScreenCTM().a<9){$('skClose').click();return;}
       if(tool==='draw'&&e.pointerType==='touch'&&d.points.length){drag={line:true};hover=snapped(p,e);drawGuide();return;}
-      remember();d.selected=null;hover=null;d.points=[...d.points,snapped(p,e)];if(tool==='pen')d.freehandTrace=true;if(tool==='pen')drag={pen:true,startIndex:d.points.length-1,matrix:board.getScreenCTM().inverse()};
+      if(tool==='draw'){addLine(snapped(p,e));return;}
+      const priorRedo=redo;remember();d.selected=null;hover=null;d.points=[...d.points,snapped(p,e)];if(tool==='pen')d.freehandTrace=true;if(tool==='pen')drag={pen:true,priorRedo,startIndex:d.points.length-1,matrix:board.getScreenCTM().inverse()};
     }else message('Use Edit points to change this outline, or Clear outline to start a new trace.');
     paint();
   };
@@ -465,7 +482,7 @@ function initCaseEditor(){
     paint();
   };
   board.onpointerup=e=>{if(!e.isPrimary)return;
-    if(drag?.line){remember();d.points.push(snapped(point(e),e));hover=null;drag=null;paint();return;}
+    if(drag?.line){drag=null;hover=null;addLine(snapped(point(e),e));drawGuide();return;}
     if(drag?.pen){
       const start=drag.startIndex,points=d.points.slice(start),keep=new Set([0,points.length-1]),ranges=[[0,points.length-1]];
       const tolerance=1.4*drag.matrix.a;
@@ -510,14 +527,21 @@ function initCaseEditor(){
     if(dialog.open)requestAnimationFrame(()=>{if(dialog.open&&!disposeModel)paint();});
   }
   expand.onclick=()=>expandDrawing(!dialog.classList.contains('expandedSketch'));
-  dialog.addEventListener('cancel',event=>{
-    if(dialog.classList.contains('expandedSketch')){event.preventDefault();expandDrawing(false);}
-  });
+  function cancelCommand(event){
+    event.preventDefault();
+    if(drag&&!drag.pan&&!drag.line){d=undo.pop()||d;redo=drag.priorRedo;sync();}
+    if(drag?.pan)viewBox(drag.start);
+    drag=null;cal=[];selection=-1;mode('edit');paint();
+    message('Command canceled. Choose Line to continue the outline.');
+  }
+  dialog.addEventListener('cancel',cancelCommand);
   dialog.addEventListener('close',()=>expandDrawing(false));
   $('skFit').onclick=fit;$('skPlus').onclick=()=>zoom(.8);$('skMinus').onclick=()=>zoom(1.25);
   dialog.onkeydown=e=>{
-    e.stopPropagation();if(e.target.matches('input,select'))return;
+    e.stopPropagation();if(e.key==='Escape'){cancelCommand(e);return;}
+    if(e.target.matches('input,select'))return;
     if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();history(e.shiftKey);}
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();history(true);}
     else if(e.key==='Enter'&&!e.target.closest('button')&&!d.closed&&d.points.length>=3)$('skClose').click();
     else if(['Delete','Backspace'].includes(e.key)&&selection>=0){e.preventDefault();deleteVertex(selection);}
   };
