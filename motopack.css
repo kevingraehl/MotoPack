@@ -189,3 +189,57 @@ body:not(.viewer-full) .screenActions .reportBug{display:none}
   #bwLive{grid-column:2;grid-row:2}
   #bwStage{height:clamp(14rem,36vh,23rem)}
 }
+
+/* Keep project actions in one disclosure while the editor owns the canvas. */
+.mast{background:var(--panel);gap:.4rem;z-index:5;flex-wrap:nowrap}
+.mast button{background:transparent;color:var(--text);border:1px solid transparent}
+.mast button:hover:enabled,.mast button:focus-visible,.mast #toggleMenu[aria-expanded=true]{background:var(--raised);border-color:var(--line)}
+.mast h1{margin:0}.mast #homeLink{font-size:1.2rem;letter-spacing:-.04em}
+.projectTools{position:relative}
+#projectMenu{position:absolute;z-index:10;top:calc(100% + .4rem);left:0;width:min(23rem,94vw);max-height:72dvh;overflow:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:.65rem;box-shadow:0 .8rem 2rem #0004;padding:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+#projectMenu[hidden]{display:none}
+#projectMenu>div,#projectMenu>label{display:grid;align-content:start;gap:.2rem}
+#projectMenu strong,#projectMenu label{font-size:.8rem;color:var(--muted)}
+#projectMenu button{text-align:left;padding:.45rem}
+.mastHistory{display:flex;border-left:1px solid var(--line);padding-left:.35rem}
+#autoSaveState{margin-left:auto}
+.mast .reportBug{margin:0}
+#batteryWizard{box-sizing:border-box;inset:0;width:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:var(--page);color:var(--text);overflow:auto;overscroll-behavior:contain}
+body:has(#batteryWizard[open]){overflow:hidden}
+#bwForm{box-sizing:border-box;width:min(100%,76rem);min-height:100%;margin:auto;padding:0 clamp(1rem,4vw,4rem);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:auto auto 1fr auto auto;align-content:start;gap:0 clamp(1rem,4vw,4rem)}
+#bwForm .bwBar{grid-column:1/-1;display:flex;align-items:center;gap:.8rem;min-height:3.6rem;border-bottom:1px solid var(--line);color:var(--muted)}
+.bwBar b{color:var(--text);letter-spacing:-.04em;font-size:1.25rem}#bwSupport{margin-left:auto}
+#bwSupport button{background:transparent;color:var(--muted);margin:0}
+#bwForm header{grid-row:2;grid-column:1/-1;background:transparent;padding:clamp(1rem,3vh,2rem) 0 1rem;margin:0;display:block}
+#bwProgress{display:block;width:9rem;height:.3rem;accent-color:var(--gold);margin:.45rem 0 1rem}
+#bwHeading{font-size:clamp(1.6rem,3.8vw,2.65rem);line-height:1.1;letter-spacing:-.035em;margin:0}
+#bwIntro{max-width:64ch;color:var(--muted)}
+#bwForm section{grid-column:1;grid-row:3;align-self:start;align-content:start;min-width:0;margin:0}
+#bwLive{grid-column:2;grid-row:3;min-width:0}
+#bwStage{height:clamp(15rem,45vh,32rem)}
+#bwError{grid-row:4}#bwError:empty{display:none}
+#bwForm footer{grid-column:1/-1;grid-row:5;position:sticky;bottom:0;background:var(--page);border-top:1px solid var(--line);margin-top:1rem;padding:.75rem 0 max(.75rem,env(safe-area-inset-bottom));z-index:2}
+#bwForm footer button{min-height:44px}
+#bwForm .fieldHelp{display:none}
+#landingStart{background:var(--raised);color:var(--text);border:1px solid var(--line)}
+@media(max-width:759px){
+ .mast{flex-wrap:wrap;gap:0;padding:4px}.mast .projectTools{position:static}
+ #projectMenu{position:fixed;top:3rem;left:.5rem;max-height:75dvh}
+ .mast #autoSaveState{font-size:.65rem}.mast button{padding:6px}
+ #bwForm{display:flex;flex-direction:column}
+ #bwForm .bwBar{min-height:3rem}
+ #bwForm header{padding:1rem 0 .65rem}
+ #bwForm section{align-self:stretch}
+ #bwLive{margin:1rem 0;flex:1}
+ #bwStage{height:clamp(10rem,27dvh,17rem)}
+ #bwForm footer{margin-top:auto}
+}
+#bwForm .bwChoices{border:0;margin:0;padding:0;display:grid;gap:.6rem}
+.bwChoices legend{padding:0;margin-bottom:.55rem}
+#bwForm .bwChoices label{display:flex;align-items:center;gap:.8rem;margin:0;padding:.85rem;background:var(--panel);border:1px solid var(--line);border-radius:.5rem;cursor:pointer}
+#bwForm .bwChoices label:has(:checked){border-color:var(--gold)}
+#bwForm .bwChoices input{width:1rem;height:1rem;accent-color:var(--gold);margin:0;flex:none}
+.bwChoices small{display:block;color:var(--muted);margin-top:.25rem}
+#bwForm header #bwIntro{display:block}
+#bwSupport button{white-space:nowrap}
+.bwBar>span{font-size:.85rem}

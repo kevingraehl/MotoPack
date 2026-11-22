@@ -39,7 +39,7 @@
   button(document.querySelector('.landingNav'));button(document.querySelector('.mast'));button(document.querySelector('.screenActions'));
   for(const d of document.querySelectorAll('dialog')){
     if([dialog,$('welcome')].includes(d))continue;
-    const header=d.querySelector('.skHeader .actions,.convHeader');
+    const header=d.querySelector('.skHeader .actions,.convHeader,#bwSupport');
     if(header)button(header);else button(d,true);
   }
   $('bugClose').onclick=()=>dialog.close();

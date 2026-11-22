@@ -41,7 +41,21 @@ function initViewerWorkspace(){
   splitter(document.querySelector('.skBody'),document.querySelector('.skTools'),'--sketch-width','sketch');
   const showSetup=panel('toggleSetup','controls','setup',true,'setup-hidden');
   panel('toggleResults','resultsPanel','results',true,'results-hidden');
-  panel('toggleMenu','projectMenu','menu',innerWidth>920);
+  const menu=$('projectMenu'),trigger=$('toggleMenu');
+  function openTools(open){
+    menu.hidden=!open;
+    trigger.setAttribute('aria-expanded',String(open));
+  }
+  trigger.onclick=()=>openTools(menu.hidden);
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('.projectTools')||event.target.closest('#projectMenu button'))openTools(false);
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!menu.hidden){openTools(false);trigger.focus();}
+  });
+  document.addEventListener('focusin',event=>{
+    if(!event.target.closest('.projectTools'))openTools(false);
+  });
   const showAdjust=panel('toggleAdjust','viewerAdjust','adjust',false);
 
   document.addEventListener('click',event=>{

@@ -84,17 +84,20 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 }
 @media(max-height:550px){#viewerAdjust{max-height:28dvh}}
 </style><link rel="stylesheet" href="motopack.css">
-<dialog id="batteryWizard" class="cbDialog"><form id="bwForm">
-  <header><small id="bwStep"></small><h2 id="bwHeading">Build a battery pack</h2></header>
+<dialog id="batteryWizard" aria-labelledby="bwHeading" class="cbDialog"><form id="bwForm">
+  <div class="bwBar"><b>motoPack</b><span>Battery pack wizard</span><div id="bwSupport"></div></div>
+  <header><small id="bwStep"></small><progress id="bwProgress" max="6" value="1" aria-label="Wizard progress"></progress><h2 id="bwHeading" tabindex="-1">Build a battery pack</h2><p id="bwIntro"></p></header>
   <section>
-    <label>Start with<select id="bwStart"><option value="target">The pack I want</option><option value="cavity">The space I have</option></select></label>
-    <label>Build name<input id="bwName" maxlength="100" value="Battery pack" required></label>
-    <label>Cell model<select id="bwCell"></select></label>
+    <fieldset class="bwChoices"><legend>Start with</legend>
+      <label><input type="radio" name="bwBasis" value="target" checked><span><b>The pack I want</b><small>Choose voltage and capacity. Size the case around the cells.</small></span></label>
+      <label><input type="radio" name="bwBasis" value="cavity"><span><b>The space I have</b><small>Enter inside dimensions and see how many cells fit.</small></span></label>
+    </fieldset>
     <div id="bwDims" hidden><p>Measure the usable inside space. For an existing pack, enter the space its replacement can occupy.</p>
       <div class="bwGrid"><label>Length (mm)<input id="bwL" type="number" min="10" max="1000" step="any" value="300" required></label><label>Width (mm)<input id="bwW" type="number" min="10" max="1000" step="any" value="160" required></label><label>Height (mm)<input id="bwH" type="number" min="10" max="1000" step="any" value="150" required></label></div>
     </div>
   </section>
   <section hidden>
+    <label>Cell model<select id="bwCell"></select></label>
     <label>Which way should the cells face?<select id="bwAxis"><option value="cross">Flat · ends face across the width</option><option value="flat">Flat · ends face along the length</option><option value="vertical">Upright · ends face up and down</option></select></label>
     <label id="bwBankLabel"><span>Number of banks</span><select id="bwBanks"></select></label>
     <p id="bwBankHint"></p><p id="bwFirstFit" aria-live="polite"></p>
@@ -117,7 +120,7 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
     <label>Where will the battery management system (BMS) sit?<select id="bwBms"><option value="off">Plan it later</option><option value="Top">On top of the pack</option><option value="Right">On the right side</option><option value="Rear">At the rear</option></select></label>
     <div id="bwBmsDims"><p>Enter the size of your BMS so the layout leaves room for it.</p><div class="bwGrid"><label>Length (mm)<input id="bwBL" type="number" min="1" max="1500" step="any" value="100" required></label><label>Width (mm)<input id="bwBW" type="number" min="1" max="1500" step="any" value="65" required></label><label>Thickness (mm)<input id="bwBH" type="number" min="1" max="1500" step="any" value="15" required></label></div></div>
   </section>
-  <section hidden><h3 id="bwResult"></h3><p id="bwSummary"></p><label>Inspect a bank<select id="bwReviewBank"></select></label><svg id="bwReviewMap" role="img" aria-label="Series group numbers in the selected bank" style="display:block;width:100%;height:12rem"></svg><p id="bwFitNote"></p></section>
+  <section hidden>    <label>Build name<input id="bwName" maxlength="100" value="Battery pack" required></label><h3 id="bwResult"></h3><p id="bwSummary"></p><label>Inspect a bank<select id="bwReviewBank"></select></label><svg id="bwReviewMap" role="img" aria-label="Series group numbers in the selected bank" style="display:block;width:100%;height:12rem"></svg><p id="bwFitNote"></p></section>
   <aside id="bwLive"><div id="bwStage" aria-label="Live battery pack preview. Drag to rotate."></div><small id="bwLiveStatus" aria-live="polite"></small></aside><p id="bwError" role="alert"></p>
   <footer><button type="button" class="secondary" id="bwCancel">Cancel</button><button type="button" class="secondary" id="bwBack">Back</button><button id="bwNext">Continue</button></footer>
 </form></dialog>
@@ -135,14 +138,27 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 <dialog id="buildDashboard" class="cbDialog"><h2>My builds</h2><p id="dashboardScope"></p><div class="actions"><button id="dashBattery">New battery pack</button><button id="dashMoto">New motorcycle conversion</button></div><p role="status" id="dashboardStatus"></p><div id="dashboardList"></div><button data-open-library>Public library</button><button id="dashClose" class="secondary">Close</button></dialog>
 <dialog id="welcome" aria-labelledby="welcomeTitle">
 <div class="landingNav"><a href="https://electricmotogarage.com"><b class="brandMark">EMG</b> Electric Moto Garage</a><button data-open-library>Public library</button><button id="landingDashboard">My builds</button><button id="landingResume" class="secondary" hidden>Resume current build</button><button id="landingBuilder" class="secondary">Advanced builder</button></div>
-<div class="landingBody"><div class="landingHero"><div><span class="productName">motoPack</span><h1 id="welcomeTitle">Build your electric dirt bike conversion.</h1>
-<p>Place a motor in your frame, draw the battery case, and fit cells for the voltage and capacity you want. Export the CAD layout for Kevin or your battery builder to review for a nearly plug-and-play kit.</p>
-<button class="startBuild" id="landingBattery">Build a battery pack</button> <button class="startBuild" id="landingStart" autofocus>Start conversion wizard →</button><small>Includes the KTM practice bike and QS138 motor models. Kevin has more motor files and frame models and is porting them into motoPack. In the CAD views, the swingarm pivot is the round bore behind the motor.</small></div>
+<div class="landingBody"><div class="landingHero"><div><span class="productName">motoPack</span><h1 id="welcomeTitle">What are you building?</h1>
+<p>Start with a battery pack, or plan a dirt bike conversion around your frame and motor. Each guide opens your design in the 3D editor.</p>
+<button class="startBuild" id="landingBattery">Build a battery pack</button> <button class="startBuild" id="landingStart">Plan a dirt bike conversion</button><small>The conversion guide includes a KTM practice frame and a QS138 motor.</small></div>
 <figure><div id="heroImage" class="storyImage" role="img" aria-label="Finished electric motocross bike concept"></div><figcaption id="heroCaption">Finished electric build · concept render</figcaption></figure></div>
 <h2>From gas bike to electric build</h2><div id="buildStory" class="storyStrip"></div>
 <section><h2>Why I built MotoPack</h2><p>I build battery packs for a living. I’ve tried <a href="https://howtobuildabattery.com/">How to Build a Battery</a> and <a href="https://batterybee.app/designer">BatteryBee</a>. I found the paid tools expensive for my workflow, and I ran into bugs using BatteryBee. I wanted one free place to lay out cells, check a frame, route nickel and export parts. For the packs I build, MotoPack does more of what I need. — Kevin</p></section>
 <div class="consult"><div><h2>Build it with Kevin</h2><p>A one-on-one build consult is $50. The full $50 goes toward any product you purchase from Electric Moto Garage.</p></div><a href="https://electricmotogarage.com/">Contact Electric Moto Garage</a></div></div></dialog>
-<header class="mast"><h1><button id="homeLink" title="Open motoPack welcome page">motoPack</button></h1><button id="openShare">Share design</button><button id="topDashboard">My builds</button><small id="autoSaveState" title="Changes autosave on this browser">Autosave on</small><button id="toggleMenu" class="secondary" aria-controls="projectMenu" aria-expanded="true">Menu</button><nav id="projectMenu" class="actions"><button id="newTop">New</button><button id="batteryWizardMenu">Battery pack wizard</button><button id="openSketch">Case sketch / import</button><button id="conversionOpen">Dirt bike conversion</button><button id="goFrame">Parts library / layout</button><button id="undo" disabled>Undo</button><button id="redo" disabled>Redo</button><button id="cloudSave" hidden>Save to account</button><output id="cloudStatus" role="status"></output><button id="saveSession">Save session</button><button id="openSession">Open session</button><select id="themePick" aria-label="Color theme"><option value="system">System theme</option><option value="dark">Dark mode</option><option value="light">Light mode</option></select><p><a href="https://electricmotogarage.com">ElectricMotoGarage.com</a> · 2026</p></nav></header>
+<header class="mast">
+  <h1><button id="homeLink" title="Open welcome page">motoPack</button></h1>
+  <button id="topDashboard">My builds</button>
+  <div class="projectTools"><button id="toggleMenu" aria-controls="projectMenu" aria-expanded="false">Tools ▾</button>
+    <nav id="projectMenu" aria-label="Project tools" hidden>
+      <div><strong>Start a build</strong><button id="batteryWizardMenu">Battery pack wizard</button><button id="conversionOpen">Dirt bike conversion</button><button id="newTop">Blank design</button></div>
+      <div><strong>Edit design</strong><button id="openSketch">Sketch or import a case</button><button id="goFrame">Parts and frame layout</button></div>
+      <div><strong>Files and sharing</strong><button id="openShare">Share design</button><button id="saveSession">Download build file</button><button id="openSession">Open build file</button><button id="cloudSave" hidden>Save to account</button><output id="cloudStatus" role="status"></output></div>
+      <label>Appearance<select id="themePick"><option value="system">System theme</option><option value="dark">Dark mode</option><option value="light">Light mode</option></select></label>
+    </nav>
+  </div>
+  <div class="mastHistory"><button id="undo" disabled>Undo</button><button id="redo" disabled>Redo</button></div>
+  <small id="autoSaveState" title="Changes autosave on this browser">Autosave on</small>
+</header>
 <main><aside id="controls"><section><h2>Cell array</h2><button class="targetPack" type="button">Build from S / P</button><div class="fields" id="array"></div><div class="actions"><button class="secondary" id="flipAxis">Switch vertical / flat</button><button class="secondary" id="fitshift">Fit 50% offset to case width</button></div></section>
 <section><h2>Pack target</h2><div id="targets" class="fields"></div><details><summary>Grouping, voltage and capacity options</summary><div id="electricDetails" class="fields"></div></details><p class="note" id="groupPlanNote"></p><p id="fitSeries" class="note"></p><p class="note">Changing S or P refits the cells. Every other series group flips so adjacent groups can connect on alternating faces.</p><details id="liveRoute"><summary>Connection map</summary><div id="inlineRoute"></div></details><div id="fitResults" aria-live="polite"></div></section>
 <details id="framePanel"><summary>Parts library &amp; frame layout</summary><p class="note">Place the frame, motor and controller around the battery in the assembly viewer. These are visual references for packaging.</p>

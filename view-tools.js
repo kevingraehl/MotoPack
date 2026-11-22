@@ -205,7 +205,7 @@ function initViewTools(){
   btn(wizard,'Plan a dirt bike conversion',()=>{wizard.close();$('conversionOpen').click();});
   btn(wizard,'Start from a case drawing or photo',()=>{wizard.close();$('openSketch').click();});
   btn(wizard,'Continue current design',()=>wizard.close());
-  btn($('newTop').parentElement,'Setup wizard',()=>wizard.showModal());
+  btn($('newTop').parentElement,'Start from a stack preset',()=>wizard.showModal());
   queueMicrotask(()=>$('welcome').showModal());
 }
 

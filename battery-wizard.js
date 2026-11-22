@@ -2,12 +2,20 @@
 const batteryWizard=$('batteryWizard'),bwForm=$('bwForm');
 const bwPages=[...bwForm.querySelectorAll('section')];
 const bwTitles=['What are you starting with?','Point the cell ends','Choose your voltage and capacity','Space and separate the cells','Make room for the BMS','Review your pack'];
+const bwIntros=[
+  'Choose what you know today. You’ll see your pack take shape as you go.',
+  'Choose a cell and turn its ends toward the side where you want to make connections.',
+  'Series sets the voltage. Cells in parallel add capacity. Each parallel group stays together in one bank.',
+  'Watch the preview as you change the row pattern and leave room for dividers.',
+  'Reserve space if you know the size of your BMS. You can also choose its position later.',
+  'Check the fit and groups in each bank. You can keep adjusting the pack in the editor.'
+];
 let bwPage=0,bwPlan=null;
 for(const [key,label] of cellChoices)$('bwCell').add(new Option(label,key));
 $('bwBanks').add(new Option('Auto · fill the available depth','auto'));
 for(let i=1;i<=12;i++)$('bwBanks').add(new Option(i,i));
 function bwConfig(){
-  const num=id=>Number($(id).value),cavity=$('bwStart').value==='cavity';
+  const num=id=>Number($(id).value),cavity=bwForm.elements.bwBasis.value==='cavity';
   const cell=cellSettings($('bwCell').value),voltage=$('bwElectrical').value==='volts';
   const series=voltage?Math.max(1,Math.round(num('bwVolts')/cell.nominal)):num('bwSeries');
   const place=$('bwPlace').value,material=$('bwMaterial').value,face=$('bwBms').value;
@@ -80,7 +88,7 @@ function bwDrawBank(){
 }
 $('bwReviewBank').onchange=bwDrawBank;
 function bwRefresh(){
-  const cavity=$('bwStart').value==='cavity',up=$('bwAxis').value==='vertical';
+  const cavity=bwForm.elements.bwBasis.value==='cavity',up=$('bwAxis').value==='vertical';
   $('bwDims').hidden=!cavity;
   $('bwBanks').options[0].disabled=!cavity;
   if(!cavity&&$('bwBanks').value==='auto')$('bwBanks').value='1';
@@ -102,19 +110,20 @@ function bwRefresh(){
   }
   bwPages.forEach((p,i)=>p.hidden=i!==bwPage);
   $('bwStep').textContent='Battery pack · '+(bwPage+1)+' of '+bwPages.length;
+  $('bwProgress').value=bwPage+1;$('bwIntro').textContent=bwIntros[bwPage];
   $('bwHeading').textContent=bwTitles[bwPage];$('bwBack').hidden=!bwPage;
   queueWizardPreview();
-  $('bwNext').textContent=bwPage===5?'Create pack in 3D':'Continue';
+  $('bwNext').textContent=bwPage===5?'Open pack in editor':bwPage===4?'Review pack':'Continue';
 }
 function openBatteryWizard(){
-  bwForm.reset();bwPage=0;bwPlan=null;$('bwError').textContent='';bwRefresh();batteryWizard.showModal();$('bwStart').focus();
+  bwForm.reset();bwPage=0;bwPlan=null;$('bwError').textContent='';bwRefresh();batteryWizard.showModal();bwForm.querySelector('[name=bwBasis]:checked').focus();
 }
 $('batteryWizardMenu').onclick=openBatteryWizard;
-$('bwBack').onclick=()=>{bwPage--;bwPlan=null;$('bwError').textContent='';bwRefresh();};
+$('bwBack').onclick=()=>{bwPage--;bwPlan=null;$('bwError').textContent='';bwRefresh();$('bwHeading').focus();};
 $('bwCancel').onclick=()=>batteryWizard.close();
 bwForm.noValidate=true;
 bwForm.oninput=e=>{
-  if(e.target===$('bwStart'))$('bwBanks').value=e.target.value==='cavity'?'auto':'1';
+  if(e.target.name==='bwBasis')$('bwBanks').value=e.target.value==='cavity'?'auto':'1';
   if(e.target===$('bwMaterial'))$('bwSheet').value=({fish:.25,FR4:1.6,printed:1,card:.4,none:0})[e.target.value];
   $('bwError').textContent='';bwRefresh();
 };
@@ -132,7 +141,7 @@ bwForm.onsubmit=e=>{
       $('bwSummary').textContent=fmt(c.volts)+' V nominal · '+fmt(c.cellAh*c.parallel)+' Ah. '+c.banks+' '+(c.axis==='vertical'?'stack(s)':'bank(s)')+', '+c.rows+' rows per bank, up to '+c.cols+' cells per row.';
       $('bwFitNote').textContent='Cell array measures '+[m.x,m.y,m.z].map(fmt).join(' × ')+' mm (length × width × height). '+(c.mode==='inner'?(capacity-m.count)+' spare positions left empty to keep the series groups equal. ':'The enclosure will size around this pack. ')+(c.bmsMode==='off'?'BMS space is still unreserved.':'BMS space included at the '+c.bmsMount.split('/')[1].toLowerCase()+'.');
     }
-    if(bwPage<5){bwPage++;bwRefresh();return;}
+    if(bwPage<5){bwPage++;bwRefresh();$('bwHeading').focus();return;}
     const {c,skip,m}=bwPlan;
     $('newDesign').click();apply(c);skip.forEach(key=>omitted.add(key));
     for(const [key,group] of groupMap(c,m))if(group&&group%2===0)reversedCells.add(key);
