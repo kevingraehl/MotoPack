@@ -18,4 +18,8 @@ if(merchant){
   if(!/^[A-Z0-9]{13}$/.test(merchant))throw Error('Use a PayPal merchant ID.');
   html=html.replace('<title>','<meta name="paypal-merchant" content="'+merchant+'"><title>');
 }
+const digest=require('node:crypto').createHash('sha256').update(html).digest();
+const revision=String(digest.readUInt32BE(0));
+html=html.replace('data-revision="LOCAL"','data-revision="'+revision+'"');
+fs.writeFileSync(path.join(__dirname,'website/version.json'),JSON.stringify({revision})+'\n');
 fs.writeFileSync(path.join(__dirname,'Open Cell Bench.html'),html);
