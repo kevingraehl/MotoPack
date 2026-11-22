@@ -258,3 +258,5 @@ body:has(#batteryWizard[open]){overflow:hidden}
 #controls .setupGroup:has(.orderButtons[hidden]) :is(h2,summary){padding-right:0}
 #bwForm .bwBar{flex-wrap:wrap;padding:.4rem 0}
 #bwForm [data-tip]{background:transparent;color:var(--text);font-size:.9rem}
+
+.frameExample { display: block; max-width: 100%; height: auto; margin-block: 0.75rem; }

@@ -287,7 +287,7 @@ function initConversion(){
   document.querySelector('.uploadPic').style.backgroundImage='linear-gradient(#11243b55,#11243b66),url("'+conversionSamples.photo+'")';
   const practiceBike={width:2078,height:1460,anchors:[[641,791],[965,668]],mm:214.5573,
     outline:[[637,817],[623,684],[641,591],[845,545],[886,557],[914,606],[929,647],[954,696],[1008,714],[1096,848],[738,983],[731,945],[692,927],[649,833]]};
-  async function photo(file,distance){
+  async function photo(file,distance,scaleGuide){
     const fromWizard=dialog.open;
     if(fromWizard){
       try{
@@ -305,14 +305,14 @@ function initConversion(){
         }
         dialog.close();
         openConversionEditor({drawing,scaleOnly:'frame',finish(applied,d){
-          if(applied)pickReference(d,{practice:distance===214.5573?practiceBike:null});else showStep(0);
+          if(applied)pickReference(d,{practice:scaleGuide||(distance===214.5573?practiceBike:null)});else showStep(0);
         }});
         if(drawing){$('skScale').click();return;}
       }catch(e){$('frameWizardStatus').textContent=e.message;return;}
     }
     await openConversionPhoto(file);
     if(distance){
-      const spec=distance===214.5573?practiceBike:{width:1526,height:1502,anchors:[[762,1158],[1084,785]]};
+      const spec=scaleGuide||(distance===214.5573?practiceBike:{width:1526,height:1502,anchors:[[762,1158],[1084,785]]});
       setSketchPractice({...spec,mm:distance});
       $('skDistance').value=distance;$('skScale').click();
       $('skStatus').textContent='Click the two blue endpoints of the orange line, then set the marked '+distance+' mm distance.';
@@ -326,6 +326,11 @@ function initConversion(){
   }
   $('bikeSample').onclick=practicePhoto('photo','KTM 85cc small-wheel.jpg',214.5573);
 
+  const excTape={width:1070,height:1156,anchors:[[332,709],[758,690]],mm:200};
+  $('excSample').onclick=$('libExc').onclick=async()=>{
+    const response=await fetch($('excSide').src);
+    await photo(new File([await response.blob()],'KTM 450 EXC circa 2005.webp',{type:'image/webp'}),excTape.mm,excTape);
+  };
   $('skBikePhoto').onclick=$('bikeSample').onclick;
   $('skFrameDrawing').onclick=practicePhoto('frameDrawing','Older KTM frame - measured CAD side view.jpg',249.3983);
   $('getFrame').onclick=async()=>{
