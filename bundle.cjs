@@ -9,6 +9,8 @@ let html=read('index.html').replace(/<script src="([^"]+)"><\/script>/g,(_,name)
 html=html.replace('src="website/venmo.png"','src="data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'website/venmo.png')).toString('base64')+'"');
 html=html.replace(/src="(examples\/ktm-[\w-]+\.webp)"/g,(_,file)=>
   'src="data:image/webp;base64,'+fs.readFileSync(path.join(__dirname,file)).toString('base64')+'"');
+html=html.replace(/href="website\/(ktm-20s12p-pack\.(step|svg))"/g,(_,file,ext)=>
+  'href="data:'+(ext==='svg'?'image/svg+xml':'application/octet-stream')+';base64,'+fs.readFileSync(path.join(__dirname,'website',file)).toString('base64')+'"');
 const css=read('motopack.css').replace('examples/conversion-story.webp','data:image/webp;base64,'+
   fs.readFileSync(path.join(__dirname,'examples/conversion-story.webp')).toString('base64'));
 html=html.replace('<link rel="stylesheet" href="motopack.css">',()=>'<style>'+css+'</style>');
