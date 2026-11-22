@@ -321,16 +321,19 @@ function initConversion(){
   }
   $('bikeUpload').onclick=()=>$('bikeFile').click();
   $('bikeFile').onchange=()=>{const f=$('bikeFile').files[0];$('bikeFile').value='';if(f)photo(f);};
+  async function referencePhoto(src,name,type,distance,guide){
+    const data=src.startsWith('data:')
+      ? Uint8Array.from(atob(src.slice(src.indexOf(',')+1)),c=>c.charCodeAt(0))
+      : await (await fetch(src)).blob();
+    await photo(new File([data],name,{type}),distance,guide);
+  }
   function practicePhoto(key,name,distance){
-    return async()=>{const blob=await (await fetch(conversionSamples[key])).blob();await photo(new File([blob],name,{type:'image/jpeg'}),distance);};
+    return ()=>referencePhoto(conversionSamples[key],name,'image/jpeg',distance);
   }
   $('bikeSample').onclick=practicePhoto('photo','KTM 85cc small-wheel.jpg',214.5573);
-
   const excTape={width:1070,height:1156,anchors:[[332,709],[758,690]],mm:200};
-  $('excSample').onclick=$('libExc').onclick=async()=>{
-    const response=await fetch($('excSide').src);
-    await photo(new File([await response.blob()],'KTM 450 EXC circa 2005.webp',{type:'image/webp'}),excTape.mm,excTape);
-  };
+  $('excSample').onclick=$('libExc').onclick=()=>referencePhoto(
+    $('excSide').src,'KTM 450 EXC circa 2005.webp','image/webp',excTape.mm,excTape);
   $('skBikePhoto').onclick=$('bikeSample').onclick;
   $('skFrameDrawing').onclick=practicePhoto('frameDrawing','Older KTM frame - measured CAD side view.jpg',249.3983);
   $('getFrame').onclick=async()=>{
