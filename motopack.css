@@ -267,3 +267,5 @@ body:has(#batteryWizard[open]){overflow:hidden}
 .frameExample { display: block; max-width: 100%; height: auto; margin-block: 0.75rem; }
 
 .wallTools{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
+
+.mast #releaseNumber{display:block;background:transparent;color:inherit;font-size:.75rem;font-weight:500;padding:.1rem 0;border:0}

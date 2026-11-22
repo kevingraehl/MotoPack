@@ -86,7 +86,7 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 </style><link rel="stylesheet" href="motopack.css">
 <dialog class="cbDialog" id="tipDialog" aria-labelledby="tipTitle"><h2 id="tipTitle">Buy me a beer</h2><img width="220" height="220" src="website/venmo.png" alt="Scan to tip Kevin on Venmo"><p><a href="https://venmo.com/code?user_id=4574590965647306065&amp;created=1795357067" target="_blank" rel="noopener noreferrer">Open @Kevdogktm in Venmo</a></p><form method="dialog"><button>Close</button></form></dialog>
 <dialog id="batteryWizard" aria-labelledby="bwHeading" class="cbDialog"><form id="bwForm">
-  <div class="bwBar"><b>motoPack</b><span>Battery pack wizard</span><label class="bwUnits">Units<select id="bwUnits" aria-label="Measurement units"><option value="mm">Metric · mm</option><option value="in">Imperial · in</option></select></label><button type="button" data-tip>Buy me a beer</button><div id="bwSupport"></div></div>
+  <div class="bwBar"><b>motoPack <small data-revision-label></small></b><span>Battery pack wizard</span><label class="bwUnits">Units<select id="bwUnits" aria-label="Measurement units"><option value="mm">Metric · mm</option><option value="in">Imperial · in</option></select></label><button type="button" data-tip>Buy me a beer</button><div id="bwSupport"></div></div>
   <header><small id="bwStep"></small><progress id="bwProgress" max="7" value="1" aria-label="Wizard progress"></progress><output id="bwSize" aria-live="polite"></output><h2 id="bwHeading" tabindex="-1">Build a battery pack</h2><p id="bwIntro"></p></header>
   <section>
     <fieldset class="bwChoices"><legend>Start with</legend>
@@ -151,7 +151,7 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 <dialog id="buildDashboard" class="cbDialog"><h2>My builds</h2><p id="dashboardScope"></p><div class="actions"><button id="dashBattery">New battery pack</button><button id="dashMoto">New motorcycle conversion</button></div><p role="status" id="dashboardStatus"></p><div id="dashboardList"></div><button data-open-library>Public library</button><button id="dashClose" class="secondary">Close</button></dialog>
 <dialog id="welcome" aria-labelledby="welcomeTitle">
 <div class="landingNav"><a href="https://electricmotogarage.com"><b class="brandMark">EMG</b> Electric Moto Garage</a><button data-open-library>Public library</button><button type="button" data-tip>Buy me a beer</button><button id="landingDashboard">My builds</button><button id="landingResume" class="secondary" hidden>Resume current build</button><button id="landingBuilder" class="secondary">Advanced builder</button></div>
-<div class="landingBody"><div class="landingHero"><div><span class="productName">MotoPack Lithium Battery Builder</span><h1 id="welcomeTitle">What are you building?</h1><button type="button" class="secondary" id="releaseNumber" data-revision="LOCAL" title="Check for a MotoPack update">Local build</button>
+<div class="landingBody"><div class="landingHero"><div><span class="productName">MotoPack Lithium Battery Builder</span><h1 id="welcomeTitle">What are you building?</h1>
 <p>Start with a battery pack, or plan a dirt bike conversion around your frame and motor. Each guide opens your design in the 3D editor.</p>
 <button class="startBuild" id="landingBattery">Build a battery pack</button> <button class="startBuild" id="landingStart">Plan a dirt bike conversion</button><small>The conversion guide includes a KTM practice frame and a QS138 motor.</small></div>
 <figure><div id="heroImage" class="storyImage" role="img" aria-label="Finished electric motocross bike concept"></div><figcaption id="heroCaption">Finished electric build · concept render</figcaption></figure></div>
@@ -159,7 +159,7 @@ body.viewer-full #stage,#stage:fullscreen{position:absolute;inset:0;width:100%;h
 <section><h2>Why I built MotoPack</h2><p>I build battery packs for a living. I’ve tried <a href="https://howtobuildabattery.com/">How to Build a Battery</a> and <a href="https://batterybee.app/designer">BatteryBee</a>. I found the paid tools expensive for my workflow, and I ran into bugs using BatteryBee. I wanted one free place to lay out cells, check a frame, route nickel and export parts. For the packs I build, MotoPack does more of what I need. — Kevin</p></section>
 <div class="consult"><div><h2>Build it with Kevin</h2><p>A one-on-one build consult is $50. The full $50 goes toward any product you purchase from Electric Moto Garage.</p></div><a href="https://electricmotogarage.com/">Contact Electric Moto Garage</a></div></div></dialog>
 <header class="mast">
-  <h1><button id="homeLink" title="Open welcome page">motoPack</button></h1>
+  <h1><button id="homeLink" title="Open welcome page">motoPack</button><button type="button" class="secondary" id="releaseNumber" data-revision="LOCAL" title="Check for a MotoPack update">Local build</button></h1>
   <button type="button" data-tip>Buy me a beer</button><button id="topDashboard">My builds</button>
   <div class="projectTools"><button id="toggleMenu" aria-controls="projectMenu" aria-expanded="false">Tools ▾</button>
     <nav id="projectMenu" aria-label="Project tools" hidden>

@@ -2,6 +2,7 @@
   const badge=document.getElementById('releaseNumber');
   const revision=badge.dataset.revision;
   badge.textContent='Rev '+revision;
+  for(const label of document.querySelectorAll('[data-revision-label]'))label.textContent=badge.textContent;
   if(!location.pathname.startsWith('/motopack-lithium-battery-builder/app'))return;
   const box=document.getElementById('releaseNotice');
   const action=document.getElementById('releaseReload');
