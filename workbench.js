@@ -238,8 +238,10 @@ function installNumberArrows(control,wrap,label){
 function setupSectionOrder(){
   const sidebar=$('controls'),panel=document.createElement('div'),key='cellbench.sectionOrder';
   panel.append(...sidebar.children);
-  const label=document.createElement('label'),pick=document.createElement('select');
-  label.className='settingsPicker';label.append('What do you want to edit?',pick);sidebar.append(label,panel);
+  const picker=document.createElement('details'),summary=document.createElement('summary'),choices=document.createElement('div');
+  picker.className='settingsPicker';picker.open=true;choices.className='settingsChoices';
+  summary.textContent='What do you want to edit?';
+  picker.append(summary,choices);sidebar.append(picker,panel);
   const groups=[
     ['Pack size and cells',['Pack target','Cell array']],
     ['Case and fit',['Case builder','Inside dimensions and bench reference']],
@@ -248,8 +250,11 @@ function setupSectionOrder(){
     ['Bike and motor',['Parts library & frame layout']],
     ['Presets and saved builds',['Starting layouts','Series layouts','My designs']]
   ];
-  for(const [name] of groups)pick.add(new Option(name,name));
-  pick.add(new Option('All settings · customize order','all'));
+  for(const [topic,title] of [...groups.map(([name])=>[name,name]),['all','All settings · customize order']]){
+    const button=document.createElement('button');
+    button.type='button';button.textContent=title;button.dataset.topic=topic;
+    button.onclick=()=>showTopic(topic);choices.append(button);
+  }
   const sections=[...panel.children].map(content=>{
     const row=document.createElement('div');row.className='setupGroup';content.replaceWith(row);row.append(content);return row;
   }),titles=new Map();
@@ -295,7 +300,7 @@ function setupSectionOrder(){
     }
   }
   function showTopic(topic){
-    pick.value=topic;
+    for(const button of choices.children)button.setAttribute('aria-pressed',String(button.dataset.topic===topic));
     for(const section of sections){
       section.hidden=topic!=='all'&&section.dataset.topic!==topic;
       section.querySelector('.orderButtons').hidden=topic!=='all';
@@ -305,7 +310,7 @@ function setupSectionOrder(){
     }
     sidebar.scrollTop=0;
   }
-  pick.onchange=()=>showTopic(pick.value);
+
   document.addEventListener('click',event=>{
     const targets={goFrame:'frameImport',editBms:'bmsSetup',wWires:'surfaceEditor',wLiner:'surfaceEditor'};
     const section=$(targets[event.target.closest('button')?.id])?.closest('.setupGroup');

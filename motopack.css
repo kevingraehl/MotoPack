@@ -253,10 +253,17 @@ body:has(#batteryWizard[open]){overflow:hidden}
 #bwCaseControl input{width:6rem}
 #bwForm #bwCaseControl[hidden]{display:none}
 
-.settingsPicker{position:sticky;top:0;z-index:2;display:grid;gap:.4rem;padding:.8rem;background:var(--panel);color:var(--text);border-bottom:1px solid var(--line);font-weight:650}
-.settingsPicker select{font-size:1rem;width:100%;min-height:44px}
+.settingsPicker{background:var(--panel);color:var(--text);border-bottom:1px solid var(--line);padding:.75rem}
+.settingsPicker summary{cursor:pointer;font-weight:650}
+.settingsPicker summary::after{content:'Show';float:right;font-size:.85em}
+.settingsPicker[open] summary::after{content:'Minimize'}
+.settingsChoices{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+#controls .settingsChoices button{background:var(--panel);color:var(--text);border:1px solid var(--line);padding:.38rem .55rem}
+#controls .settingsChoices button[aria-pressed=true]{background:#f4c541;color:#121820}
 #controls .setupGroup:has(.orderButtons[hidden]) :is(h2,summary){padding-right:0}
 #bwForm .bwBar{flex-wrap:wrap;padding:.4rem 0}
 #bwForm [data-tip]{background:transparent;color:var(--text);font-size:.9rem}
 
 .frameExample { display: block; max-width: 100%; height: auto; margin-block: 0.75rem; }
+
+.wallTools{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}

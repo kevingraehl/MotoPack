@@ -170,6 +170,14 @@ function openBatteryWizard(){
 }
 $('batteryWizardMenu').onclick=openBatteryWizard;
 $('bwBack').onclick=()=>{bwPage--;bwPlan=null;$('bwError').textContent='';bwRefresh();$('bwHeading').focus();};
+$('bwSketch').onclick=()=>{
+  batteryWizard.close();
+  const sketch=$('sketchDialog');
+  sketch.addEventListener('close',()=>{
+    if(sketch.returnValue!=='applied'){batteryWizard.showModal();$('bwSketch').focus();}
+  },{once:true});
+  $('openSketch').click();
+};
 $('bwCancel').onclick=()=>batteryWizard.close();
 bwForm.noValidate=true;
 bwForm.oninput=e=>{

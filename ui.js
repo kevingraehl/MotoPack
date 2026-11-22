@@ -51,13 +51,31 @@ print:[['holderShape','Cell holder outline',[['rectangle','Rectangular'],['conto
   ['slack','Bore clearance, diameter (mm)',[0,4,'any']],['plate','Plate thickness (mm)',[0.5,25,'any']],
   ['lip','Axial lip thickness (mm)',[0.1,10,'any']],['land','Radial lip width (mm)',[0.2,10,'any']]],
 squiggle:[['sqStyle','Spacer style',[['caps','End caps · one at each end'],['rails','Slide-in strips · both terminals open']]],['sqRailLength','Slide-in strip length (mm)',[1,250,'any']],['sqDirection','Separator direction',[['rows','Between rows'],['columns','Between columns']]],
-  ['sqWall','Printed wall thickness (mm)',[.2,3,'any']],['sqDepth','Wall depth (mm)',[1,70,'any']],
+  ['sqWall','Printed wall thickness (mm)',[.2,6,'any']],['sqDepth','Wall depth (mm)',[1,70,'any']],
   ['sqRootStyle','Strengthen the wall at the sheet',[['off','Off'],['fillet','Rounded fillet'],['chamfer','45° chamfer']]],['sqRootChamfer','Fillet radius / chamfer size (mm)',[0,2,'any']],['sqFace','Terminal face (mm)',[.2,3,'any']],['sqOpening','Terminal opening (mm)',[2,70,'any']],
   ['sqMaxWidth','Maximum outside width (mm)',[10,1000,'any']]],
 casefields:[['length','Inside length (mm)',[10,1000,'any']],['width','Inside width (mm)',[10,1000,'any']],
   ['high','Tall-end height (mm)',[10,1000,'any']],['low','Low-end height (mm)',[10,1000,'any']],
   ['ref','Measured bare stack height (mm)',[10,1000,'any']],['headroom','Gap over bare stack (mm)',[0,300,'any']]]};
 for(const [section,items] of Object.entries(spec))for(const item of items)field(section,...item);
+fields.sqWall.dataset.nudge='.1';
+const inspectWalls=document.createElement('button');
+inspectWalls.type='button';inspectWalls.className='secondary';
+const wallTools=document.createElement('div');
+wallTools.className='wallTools';
+for(const width of [.42,.84,1.26,2]){
+  const button=document.createElement('button');
+  button.type='button';button.className='secondary';button.textContent=width+' mm';
+  button.onclick=()=>{fields.sqWall.value=width;fields.sqWall.dispatchEvent(new Event('input',{bubbles:true}));};
+  wallTools.append(button);
+}
+wallTools.append(inspectWalls);
+fields.sqWall.parentElement.parentElement.after(wallTools);
+inspectWalls.onclick=()=>{$('showCells').checked=!$('showCells').checked;render();};
+$('sqVentsOff').onclick=()=>{
+  const slider=$(fields.sqStyle.value==='rails'?'sqVentWidth':'sqCapVentWidth');
+  slider.value=0;slider.dispatchEvent(new Event('input',{bubbles:true}));
+};
 $('array').prepend(...['cols','rows','banks','pattern','axis','cellModel'].map(key=>fields[key].parentElement));
 $('electricDetails').prepend(fields.groupPlan.parentElement,fields.capacityMode.parentElement);
 function targetParallel(c){return c.capacityMode==='ah'?Math.ceil(c.desiredAh/c.cellAh-1e-10):c.parallel;}
@@ -245,7 +263,9 @@ function render(){
     $('sqCapVentWidth').disabled=Number($('sqCapVentWidth').max)===0;
     $('sqCapVentValue').value=c.sqCapVentWidth?fmt(c.sqCapVentWidth)+' mm':'0 mm · solid';
     const printTip={diamond:'The pointed roof closes gradually.',teardrop:'The teardrop has a pointed roof for printing.',v:'The V has sloping arms. Test the tips on your printer.',round:'The curved roof can sag. Try a small test print.',oval:'The wide, shallow roof can sag. Try a small test print.'};
-    $('sqVentHelp').textContent=(rails?'Print strips standing on the end band. ':'Print end caps with the terminal sheet down. Wall depth limits the opening width to leave 2 mm at each end. ')+printTip[c.sqVentShape]+' Vented walls reserve at least one wall thickness between neighboring cells.';
+    inspectWalls.textContent=$('showCells').checked?'Hide cells to inspect walls':'Show cells';
+    $('sqVentsOff').disabled=!(rails?c.sqVentWidth:c.sqCapVentWidth);
+    $('sqVentHelp').textContent='0 mm turns vents off. '+(rails?'Print strips standing on the end band. ':'Print end caps with the terminal sheet down. Wall depth limits the opening width to leave 2 mm at each end. ')+printTip[c.sqVentShape]+' Vented walls reserve at least one wall thickness between neighboring cells.';
     $('sqGroupsOnly').disabled=(rails?c.sqVentWidth:c.sqCapVentWidth)>0;
     $('sqVentValue').value=c.sqVentWidth?fmt(c.sqVentWidth)+' mm':'0 mm · solid';
     for(const key of ['sqDepth','sqOpening','sqFace','sqRootStyle'])fields[key].parentElement.hidden=rails;
@@ -282,7 +302,7 @@ function render(){
         }
       }
       const over=sq.outsideWidth>c.sqMaxWidth+1e-6;
-      $('squiggleStatus').textContent=(c.squiggleOn?'Enabled · ':'Preview off · ')+fmt(sq.outsideWidth)+' mm outside width · '+(over?'over ':'within ')+fmt(c.sqMaxWidth)+' mm limit · '+(rails?fmt(c.sqRailLength)+' mm slide-in strips · both terminals open':fmt(c.sqFace)+' mm sheet at each end')+' · '+fmt(c[gapKey])+' mm cell gap along the '+(gapKey==='gap'?'row.':'column.');
+      $('squiggleStatus').textContent=(c.squiggleOn?'Enabled · ':'Preview off · ')+fmt(c.sqWall)+' mm walls · '+fmt(sq.outsideWidth)+' mm outside width · '+(over?'over ':'within ')+fmt(c.sqMaxWidth)+' mm limit · '+(rails?fmt(c.sqRailLength)+' mm slide-in strips · both terminals open':fmt(c.sqFace)+' mm sheet at each end')+' · '+fmt(c[gapKey])+' mm cell gap along the '+(gapKey==='gap'?'row.':'column.');
       $('squiggleStatus').className=over?'status bad':'';
       $('squiggleStep').disabled=$('exportSquiggleStep').disabled=over;
       $('squiggleStl').disabled=$('exportSquiggleStl').disabled=over;
