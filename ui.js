@@ -236,11 +236,11 @@ function render(){
     const targetP=targetParallel(c),activeCount=c.series*p;
     $('fitSeries').textContent=!valid?'No complete layout for this bank split.':c.series+'S'+p+'P in the viewer · '+activeCount+' active cells · '+fmt(p*c.cellAh)+' Ah · '+fmt(c.series*c.nominal)+' V nominal'+(p<targetP?' · Target '+c.series+'S'+targetP+'P needs more positions in the required groups.':m.count>activeCount?' · '+(m.count-activeCount)+' unused positions.':'');
     refreshInlineRoute();
-    $('size').textContent=[m.x,m.y,m.z].map(fmt).join(' × ');
+    $('packSizeLabel').textContent='Pack L × W × H, '+measurementUnit;$('size').textContent=displayLength(m.x,m.y,m.z).split(' ').slice(0,-1).join(' ');
     const axes=['length','width','height'];
     const exceeded=m.margins.map((n,i)=>n<-.00001?fmt(-n)+' mm over '+axes[i]:null).filter(Boolean);
     $('fit').className='status'+(exceeded.length?' bad':'');
-    $('fit').textContent=exceeded.length?'Outside case envelope · '+exceeded.join(', '):'Within case envelope · remaining L / W / H '+m.margins.map(fmt).join(' / ')+' mm';
+    $('fit').textContent=exceeded.length?'Outside case envelope · '+exceeded.join(', '):'Within case envelope · remaining L / W / H '+displayLength(...m.margins).replaceAll(' × ',' / ');
     if(shell.profile||shell.posed){
       const outside=shell.cells.filter(cell=>cell.status==='outside').length,touch=shell.cells.filter(cell=>cell.status==='touching').length;
       $('fit').textContent=outside||touch?outside+' cells outside · '+touch+' touching the case':shell.profile?'Cells clear the selected side profile and inside depth':'Cells clear the case at this placement';

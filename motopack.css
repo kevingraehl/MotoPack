@@ -269,3 +269,20 @@ body:has(#batteryWizard[open]){overflow:hidden}
 .wallTools{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
 
 .mast #releaseNumber{display:block;background:transparent;color:inherit;font-size:.75rem;font-weight:500;padding:.1rem 0;border:0}
+
+#panelPlanner{padding:6px 10px;background:var(--panel)}
+#panelPlanner label,#panelPlanner output{display:inline-block}#panelPlanner input{width:min(190px,42%);vertical-align:middle}#panelPlanner small{display:block}
+
+.scaleOnly .skViewBar :is([data-sktool],#skFinishLine,label:has(#skAxis),#skDimensions),.scaleOnly #skAlignment{display:none}
+#skAlignment{padding:2px 10px}#skAlignment .actions{align-items:center}#skAlignment input[type=number]{width:6em}
+
+.metricSource,.inchEntry[hidden]{display:none!important}.measureSwitch{width:auto;max-width:5em;margin-inline:4px}
+@media(max-width:650px){
+  #sketchDialog .skViewBar{display:block;flex:none}
+  #sketchDialog .skViewBar>strong{display:none}
+  #sketchDialog .skViewBar>div{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding-bottom:3px}
+  #sketchDialog .skViewBar>div>*{flex:none;white-space:nowrap}
+  #sketchDialog .skWorkspace{overflow:auto;min-height:0}
+  #sketchDialog #skBoard{min-height:clamp(150px,26dvh,270px);flex:1 0 auto}
+  #sketchDialog #panelPlanner,#sketchDialog #skAlignment,#sketchDialog #skLayers{flex:none}
+}

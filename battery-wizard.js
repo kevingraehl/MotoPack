@@ -166,7 +166,7 @@ function bwRefresh(){
   $('bwNext').textContent=bwPage===6?'Open pack in editor':bwPage===5?'Review pack':'Continue';
 }
 function openBatteryWizard(){
-  bwConvert(1);bwForm.reset();for(const el of bwMeasures)delete el.dataset.mm;bwPage=0;bwPlan=null;$('bwError').textContent='';bwRefresh();batteryWizard.showModal();bwForm.querySelector('[name=bwBasis]:checked').focus();
+  bwConvert(1);bwForm.reset();for(const el of bwMeasures)delete el.dataset.mm;$('bwUnits').value=measurementUnit;bwConvert(measurementUnit==='in'?25.4:1);bwPage=0;bwPlan=null;$('bwError').textContent='';bwRefresh();batteryWizard.showModal();bwForm.querySelector('[name=bwBasis]:checked').focus();
 }
 $('batteryWizardMenu').onclick=openBatteryWizard;
 $('bwBack').onclick=()=>{bwPage--;bwPlan=null;$('bwError').textContent='';bwRefresh();$('bwHeading').focus();};

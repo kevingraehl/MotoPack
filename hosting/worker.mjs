@@ -1,5 +1,6 @@
 import {designRequest} from './designs.mjs';
 import {cleanBugReport,reportLimit} from './bug-report.mjs';
+import {photos} from './photos.mjs';
 import {account} from './account.mjs';
 const path='/MotoPack';
 
@@ -66,6 +67,8 @@ export default {
     const url=new URL(request.url);
     if(url.pathname===path+'/designs'||url.pathname.startsWith(path+'/designs/'))return designRequest(request,env.SUMMARIES,async()=>(await env.SUBMIT_LIMIT.limit({key:'share:'+request.headers.get('CF-Connecting-IP')})).success);
     if(url.pathname.startsWith(path+'/account/'))return account(request,env);
+    const photoRoute=/^\/MotoPack\/photos(?:\/([^/]+))?$/.exec(url.pathname);
+    if(photoRoute)return photos(request,env,photoRoute[1]);
     if(url.pathname===path+'/visit')return visit(request,env);
     if([path+'/summary',path+'/bug-report'].includes(url.pathname))return request.method==='POST'?submit(request,env,url.pathname.split('/').pop()):reply('Use POST.',405);
     if(url.pathname!==path&&url.pathname!==path+'/')return reply('Page not found.',404);

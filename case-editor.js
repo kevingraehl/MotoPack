@@ -1,6 +1,7 @@
 function initCaseEditor(){
   const dialog=$('sketchDialog'),board=$('skBoard'),ns=board.namespaceURI;
   let d,tool,cal=[],viewport,drag,pdf,revision=0,undo=[],redo=[],selection=-1;
+  let panelDraft=null,panelSource=null;
   let arcThrough=null,hover=null,dimensions=true;
   let disposeModel,loading=false,guided=null,practice=null;
   let liveTimer,quickTimer=0,liveKey='',depthMeasured=false,explicitAuto=false;
@@ -13,7 +14,7 @@ function initCaseEditor(){
   const start=$('skOutlineTitle');start.before(extras);
   while(extras.nextElementSibling)extras.append(extras.nextElementSibling);
   // Keep the example and the case width within reach without opening advanced tools.
-  $('skSmooth').after($('skUndo'),$('skRedo'));
+  $('skFinishLine').after($('skUndo'),$('skRedo'));
   live.append($('useDemoOutline'),$('skDepth').closest('label'));
   const preview=document.createElementNS(ns,'g');preview.setAttribute('pointer-events','none');
   preview.id='skCellPreview';$('skDrawing').before(preview);
@@ -135,13 +136,14 @@ function initCaseEditor(){
   const message=(text,error=false)=>{const out=$('skStatus');out.textContent=text;out.dataset.error=error;};
   const traceTool=()=>tool==='pen'||tool==='frameTrace';
   function mode(next){
+    if(guided?.scaleOnly&&next!=='pan')next='scale';
     returnToSketch();arcThrough=null;hover=null;tool=next;for(const b of dialog.querySelectorAll('[data-sktool]'))b.setAttribute('aria-pressed',b.dataset.sktool===tool);
     $('skSwitch').textContent=traceTool()?'Switch to line':'Switch to freehand';
     $('skMeasure').hidden=next!=='scale'||cal.length!==2;
-    message(({frameTrace:'Drag along the inside edge of the frame photo. Adjust edge offset and pull strength in Highlighter settings. Undo removes one stroke.',arc:'Pick a start, a point on the curve, then its end. An existing outline supplies the start.',rectangle:'Drag between opposite corners of the rectangle.',circle:'Drag from the center to the edge of the circle.',draw:'Click each corner, then click the first point to close. Hold Shift for a horizontal or vertical edge.',pen:'Drag to trace a continuous outline. Release, then close the outline.',edit:'Drag a corner to move it. Double-click an edge to insert a point. Delete removes the selected corner.',pan:'Drag to pan. Scroll to zoom around the pointer.',scale:'Click both ends of a known length in the drawing.'})[next]);
+    message(({frameTrace:'Drag along the inside edge of the frame photo. Adjust edge offset and pull strength in Highlighter settings. Undo removes one stroke.',arc:'Pick a start, a point on the curve, then its end. An existing outline supplies the start.',rectangle:'Drag between opposite corners of the rectangle.',circle:'Drag from the center to the edge of the circle.',draw:'Click each corner. Enter or Close outline joins the last placed dot to the first. Click the mouse position first to include it as the final corner.',pen:'Drag to trace a continuous outline. Release, then close the outline.',edit:'Drag a corner to move it. Double-click an edge to insert a point. Delete removes the selected corner.',pan:'Drag to pan. Scroll to zoom around the pointer.',scale:'Click both ends of a known length in the drawing.'})[next]);
   }
-  function remember(){undo.push({...d,points:d.points.map(p=>[...p])});if(undo.length>50)undo.shift();redo=[];}
-  function history(forward){const from=forward?redo:undo,to=forward?undo:redo;if(!from.length)return;to.push(d);d=from.pop();selection=-1;cal=[];mode(d.closed?'edit':tool==='arc'?'arc':'draw');sync();paint();}
+  function remember(){panelDraft=panelSource=null;undo.push({...d,points:d.points.map(p=>[...p])});if(undo.length>50)undo.shift();redo=[];}
+  function history(forward){panelDraft=panelSource=null;const from=forward?redo:undo,to=forward?undo:redo;if(!from.length)return;to.push(d);d=from.pop();selection=-1;cal=[];mode(d.closed?'edit':tool==='arc'?'arc':'draw');sync();paint();}
   function viewBox(v){viewport=v;board.setAttribute('viewBox',[v.x,v.y,v.w,v.h].join(' '));}
   function fit(){
     const all=[...d.points,...(d.loops||[]).flat()];
@@ -174,7 +176,7 @@ function initCaseEditor(){
     const g=$('skGuide');g.replaceChildren();
     const last=d.points.at(-1),a=last,b=hover;
     const px=1/(board.getScreenCTM()?.a||1);
-    const unit=n=>fmt(n*(d.scale||1))+(d.scale?' mm':' drawing units');
+    const unit=n=>d.scale?displayLength(n*d.scale):fmt(n)+' drawing units';
     function label(p,text){
       svg('text',{x:p[0],y:p[1]-7*px,'text-anchor':'middle','font-size':14*px,fill:'#fff',stroke:'#15202e','stroke-width':3*px,'paint-order':'stroke'},g).textContent=text;
     }
@@ -202,7 +204,8 @@ function initCaseEditor(){
     const pattern=$('skPattern');pattern.setAttribute('width',grid);pattern.setAttribute('height',grid);pattern.firstElementChild.setAttribute('d','M'+grid+' 0H0V'+grid);
     const fill=$('skGridFill');const ext=Math.max(viewport.w,viewport.h)*6;
     for(const [k,n] of Object.entries({x:viewport.x-ext,y:viewport.y-ext,width:2*ext+viewport.w,height:2*ext+viewport.h}))fill.setAttribute(k,n);
-    fill.style.display=d.scale?'':'none';
+    pattern.setAttribute('patternTransform','rotate('+Number($('gridAngle').value||0)+')');
+    fill.style.display=d.scale&&$('gridVisible').checked?'':'none';
     const img=$('skImage');
     if(d.image){if(img.getAttribute('href')!==d.image.url)img.setAttribute('href',d.image.url);img.setAttribute('width',d.image.w);img.setAttribute('height',d.image.h);}else img.removeAttribute('href');
     const line=(p,closed,color,width,fill='none')=>svg(closed?'polygon':'polyline',{points:p.map(v=>v.join(',')).join(' '),stroke:color,'stroke-width':width,'vector-effect':'non-scaling-stroke',fill},g);
@@ -212,6 +215,15 @@ function initCaseEditor(){
       svg('image',{href:m.preview,x:-w/2,y:-h/2,width:w,height:h,transform:'translate('+m.point.join(' ')+') rotate('+m.angle+')',opacity:.84,'pointer-events':'none'},g);
     }
     if(d.points.length)line(d.points,d.closed,'#21a88e',2.4,d.closed?'#717d792e':'none');
+    const panelBox=$('panelPlanner'),panelCount=$('panelCount');
+    panelBox.hidden=!d.closed||!d.scale||!!guided?.scaleOnly||!!guided?.motor;
+    if(!panelBox.hidden){
+      panelCount.max=Math.min(64,d.points.length+2);
+      const total=panelCount.valueAsNumber;
+      if(panelSource!==d.points){panelSource=d.points;panelDraft=null;}
+      $('panelBreakdown').textContent=total+' total · '+(total-2)+' perimeter + 2 side plates';
+      if(panelDraft)line(panelDraft,true,'#ffc74b',3).setAttribute('pointer-events','none');
+    }
     if(tool==='edit'||tool==='draw')d.points.forEach(([cx,cy],i)=>svg('circle',{cx,cy,r:px*(selection===i?6:4),'data-vertex':i,fill:i===selection?'#f5ab41':'#fff',stroke:'#197d6b','stroke-width':1.5,'vector-effect':'non-scaling-stroke'},g));
     $('skValidity').textContent=(d.closed?'Outline connected. Drag a dot to adjust it.':'Connect the last dot to the first to enclose the shaded area.')+' Right-click a dot to delete it.';
     if(!drag&&!d.closed&&d.points.length>=3)line([d.points.at(-1),d.points[0]],false,'#e9bc56',1.2).setAttribute('stroke-dasharray','5 4');
@@ -232,7 +244,7 @@ function initCaseEditor(){
     $('skPull').disabled=!d.image||d.points.length<2;
     $('skFinishLine').disabled=$('skClose').disabled=d.closed||d.points.length<3;
     $('skFewer').disabled=!d.closed||!d.scale;
-    $('skScaleInfo').textContent=d.scale?(d.points.length?(()=>{const b=sketchBounds(d.points);return fmt(b.w*d.scale)+' × '+fmt(b.h*d.scale)+' mm · ';})():'')+(cadScale?'Scale set by CAD · millimeters':'Grid in millimeters'):'Scale required before applying this outline.';
+    $('skScaleInfo').textContent=d.scale?(d.points.length?(()=>{const b=sketchBounds(d.points);return displayLength(b.w*d.scale,b.h*d.scale)+' · ';})():'')+(cadScale?'Scale set by CAD · millimeters':'Grid in '+(measurementUnit==='in'?'inches':'millimeters')):'Scale required before applying this outline.';
   }
   function sync(){
     $('skInspect').hidden=!d.step;$('skPlace').checked=!!d.autoPlace;$('skEndFace').checked=!!d.endFace;$('skSource').textContent=d.name;$('skStepBox').hidden=!d.step;
@@ -256,6 +268,7 @@ function initCaseEditor(){
     sync();fit();if(d.loops.length===1)chooseLoop(0);
     message(d.loops.length?'Choose the contour bounding the usable cavity. Check the depth across the frame.':'No closed contours at this slice. Try another plane or slice position.');
   }
+  document.addEventListener('measurementchange',()=>{if(dialog.open&&d)paint();});
   const releasePdf=()=>{if(pdf){pdf.destroy();pdf=null;}$('skPageBox').hidden=true;};
   function open(options=null){
     for(const input of $('skLayers').querySelectorAll('input'))input.checked=$(input.dataset.layer).checked;
@@ -313,7 +326,7 @@ function initCaseEditor(){
       if(d.step){section();return;}
       if(guided&&d.image&&!d.scale)mode('scale');
       fit();if(d.loops.length===1)chooseLoop(0);
-      message(d.image?(d.scale?'The drawing supplies its scale. Trace the inside opening.':'Pick two reference points, enter their measured distance, then trace the inside opening.'):'Choose an inside contour.'+(d.scale?' Physical units were read from the SVG.':' This SVG needs a known measurement.'));
+      message(guided?.scaleOnly?'Pick two points a known distance apart, enter the distance, then continue.':d.image?(d.scale?'The drawing supplies its scale. Trace the inside opening.':'Pick two reference points, enter their measured distance, then trace the inside opening.'):'Choose an inside contour.'+(d.scale?' Physical units were read from the SVG.':' This SVG needs a known measurement.'));
     }catch(e){if(token===revision){newPdf?.destroy();loading=false;paint();message(e.message||'Could not decode this file.',true);}}
   };
   $('skPage').onchange=async()=>{
@@ -368,6 +381,39 @@ function initCaseEditor(){
     }
     return points.filter((_,i)=>keep.has(i));
   }
+  // Repeatedly retain the corner furthest from its replacement straight edge.
+  function panelOutline(points,count){
+    const loop=cleanLoop(points),corners=[0,loop.length];
+    if(loop.length<=count)return loop;
+    while(corners.length-1<count){
+      let best=-1,insert=0,error=-1;
+      for(let j=1;j<corners.length;j++){
+        const a=corners[j-1],b=corners[j];
+        for(let i=a+1;i<b;i++){
+          const distance=pathDistance(loop[i],loop[a],loop[b%loop.length]);
+          if(distance>error){error=distance;best=i;insert=j;}
+        }
+      }
+      if(best<0)break;
+      corners.splice(insert,0,best);
+    }
+    return cleanLoop(corners.slice(0,-1).map(i=>loop[i]));
+  }
+  function previewPanels(){
+    const slider=$('panelCount'),target=slider.valueAsNumber;
+    const points=panelOutline(d.points,target-2);
+    try{checkOutline(points);}
+    catch(e){panelDraft=null;paint();message('Try more panels. '+e.message,true);return null;}
+    panelSource=d.points;panelDraft=points;paint();
+    if(points.length+2!==target)$('panelBreakdown').textContent+=' · '+(points.length+2)+' needed after merging straight edges';
+    return points;
+  }
+  $('panelCount').oninput=previewPanels;
+  $('applyPanels').onclick=()=>{
+    const points=previewPanels();if(!points)return;
+    applyTrace(points);mode('edit');
+    message('Applied '+(points.length+2)+' panels including both side plates. Undo restores the original trace.');
+  };
   $('skFewer').onclick=()=>{
     const input=$('skTolerance');
     if(!input.reportValidity()||!(input.valueAsNumber>0))return;
@@ -420,7 +466,7 @@ function initCaseEditor(){
   $('skSetScale').onclick=()=>{
     const real=+$('skDistance').value,dist=cal.length===2?Math.hypot(cal[0][0]-cal[1][0],cal[0][1]-cal[1][1]):0;
     if(!(real>0&&dist>.000001)){message('Pick two different points and enter a positive measured length.',true);return;}
-    remember();d.scale=real/dist;if(d.step)d.original=false;cal=[];mode(d.closed?'edit':'pen');sync();paint();message('Scale set. '+(d.closed?'Check the depth and apply the enclosure.':'Trace the usable inside opening.'));
+    remember();d.scale=real/dist;if(d.step)d.original=false;cal=[];mode(d.closed?'edit':'pen');sync();paint();message(guided?.scaleOnly?(guided.scaleOnly==='frame'?'Frame scaled. Continue to Motor to place the sprocket before tracing the enclosure.':'Motor photo scaled. Select Use this motor.'):'Scale set. '+(d.closed?'Check the depth and apply the enclosure.':'Trace the usable inside opening.'));
   };
   for(const b of dialog.querySelectorAll('[data-sktool]'))b.onclick=()=>{
     if(b.dataset.sktool==='frameTrace'){
@@ -436,20 +482,35 @@ function initCaseEditor(){
   const edge=frameEdgeAssist();
   board.onpointerleave=()=>{edge.clear();hover=null;drawGuide();};
   function assist(p,track){return edge.pull(p,d,board.getScreenCTM().a,track,false,tool==='frameTrace');}
+  const rotateXY=([x,y],angle)=>[x*Math.cos(angle)-y*Math.sin(angle),x*Math.sin(angle)+y*Math.cos(angle)];
   function gridPoint(p){
     if(!$('skSnap').checked||!d.scale)return p;
-    const step=(+$('skGrid').value||10)/d.scale;return p.map(n=>Math.round(n/step)*step);
+    const step=(+$('skGrid').value||10)/d.scale,angle=Number($('gridAngle').value)*Math.PI/180;
+    return rotateXY(rotateXY(p,-angle).map(n=>Math.round(n/step)*step),angle);
   }
   function snapped(p,e){
     if(tool==='draw'||traceTool())p=assist(p);
     p=gridPoint(p);
-    if(d.points.length&&tool==='draw'&&$('skAxis').value!=='free'){
-      const fixed=$('skAxis').value==='x'?1:0;p[fixed]=d.points.at(-1)[fixed];
-    }else if(e.shiftKey&&d.points.length&&tool==='draw'){
-      const last=d.points.at(-1),axis=Math.abs(p[0]-last[0])>Math.abs(p[1]-last[1])?1:0;p[axis]=last[axis];
+    if(!d.points.length||tool!=='draw')return p;
+    const last=d.points.at(-1),prev=d.points.at(-2),dx=p[0]-last[0],dy=p[1]-last[1];
+    const angle=Math.atan2(dy,dx),grid=Number($('gridAngle').value)*Math.PI/180,quarter=Math.PI/2;
+    const axis=$('skAxis').value;
+    let heading=grid+Math.round((angle-grid)/quarter)*quarter;
+    if(axis!=='free')heading=grid+(axis==='y'?quarter:0);
+    else if(!e.shiftKey){
+      if(!$('orthoSnap').checked)return p;
+      if(prev){
+        const normal=Math.atan2(last[1]-prev[1],last[0]-prev[0])+quarter;
+        const perpendicular=normal+Math.round((angle-normal)/Math.PI)*Math.PI;
+        if(Math.abs(perpendicular-angle)<Math.abs(heading-angle))heading=perpendicular;
+      }
+      if(Math.abs(heading-angle)>5*Math.PI/180)return p;
     }
-    return p;
+    const ux=Math.cos(heading),uy=Math.sin(heading),along=dx*ux+dy*uy;
+    return [last[0]+along*ux,last[1]+along*uy];
   }
+  for(const id of ['gridAngle','gridVisible','skSnap','orthoSnap'])$(id).oninput=paint;
+  for(const button of dialog.querySelectorAll('[data-grid-mm]'))button.onclick=()=>{$('skGrid').value=button.dataset.gridMm;paint();};
   function addLine(q){
     const points=d.points,last=points.at(-1),prev=points.at(-2),epsilon=.00001;
     if(last){
@@ -570,8 +631,6 @@ function initCaseEditor(){
   board.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1.12:1/1.12,point(e));},{passive:false});
   const expand=$('skExpand');
   function expandDrawing(on){
-    if(on)expand.before($('skUndo'),$('skRedo'));
-    else $('skSmooth').after($('skUndo'),$('skRedo'));
     dialog.classList.toggle('expandedSketch',on);
     expand.textContent=on?'Exit full screen':'Full screen';
     expand.setAttribute('aria-pressed',String(on));

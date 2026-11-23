@@ -466,7 +466,7 @@ function showBuilder(c,m,s){
   if(caseSketch){if(document.activeElement!==$('quickDepth'))$('quickDepth').value=+(caseSketch.endFace?c.length:c.width).toFixed(6);$('caseAngle').value=caseSketch.angle||0;}
   $('partReport').textContent=[...(s.parts.length?['Finished envelope '+s.finished.map(fmt).join(' × ')+' mm']:[]),...new Set(s.warnings)].join(' · ');
   $('bmsStl').disabled=c.bmsMode==='off';
-  $('bmsAllowance').textContent=c.bmsMode==='off'?'Add the measured board or enclosure in the BMS editor to reserve its space.':'BMS box included · '+[c.bmsL,c.bmsW,c.bmsH].map(fmt).join(' × ')+' mm. Check connector access and cable bends.';
+  $('bmsAllowance').textContent=c.bmsMode==='off'?'Add the measured board or enclosure in the BMS editor to reserve its space.':'BMS box included · '+displayLength(c.bmsL,c.bmsW,c.bmsH)+'. Check connector access and cable bends.';
   $('hard').checked=c.mode!=='pack';
   const alerts=s.cells.filter(p=>p.status!=='clear'),outside=alerts.filter(p=>p.status==='outside').length;
   $('contacts').textContent=c.mode==='pack'?'Auto-size · '+m.count+' cells':outside+' outside (red) · '+(alerts.length-outside)+' touching (amber) · '+(m.count-alerts.length)+' clear';
@@ -475,7 +475,7 @@ function showBuilder(c,m,s){
   for(const key of ['outL','outW','outH'])fields[key].parentElement.hidden=c.mode!=='both';
   for(const key of ['length','width','high','low'])fields[key].disabled=c.mode==='pack';
   $('caseNote').textContent=c.mode==='both'?'Walls are centered around the inner cavity. Overall height includes the floor.':c.mode==='pack'?'Dimensions follow the pack, holders and six clearance values.':'Enter the inside dimensions below. Walls and floor determine the outside.';
-  $('caseSize').textContent='Inside '+[c.length,c.width,s.peak].map(fmt).join(' × ')+' mm · Outside '+[c.length+2*s.tx,c.width+2*s.ty,s.peak+s.floor].map(fmt).join(' × ')+' mm (peak)';
+  $('caseSize').textContent='Inside '+displayLength(c.length,c.width,s.peak)+' · Outside '+displayLength(c.length+2*s.tx,c.width+2*s.ty,s.peak+s.floor)+' (peak)';
   $('fillChoice').hidden=!endsFaceProfile(c);$('fillPattern').value=c.pattern;$('skFillResult').textContent='';$('skFill').hidden=!endsFaceProfile(c);
   $('removeSketch').hidden=!s.profile;$('hard').disabled=fields.mode.disabled=!!s.profile;
   fields.wall.disabled=fields.base.disabled=!!(s.profile&&caseSketch.original);
@@ -486,7 +486,7 @@ function showBuilder(c,m,s){
   if(s.profile){
     for(const key of [caseSketch.endFace?'width':'length','high','low'])fields[key].disabled=true;
     $('caseNote').textContent='Fixed side profile · '+caseSketch.name+'. '+(caseSketch.autoPlace?'Auto-position is on. ':'')+'Open the sketch to change the outline or placement.';
-    $('caseSize').textContent='Inside L × W × H '+[c.length,c.width,s.peak].map(fmt).join(' × ')+' mm · '+(caseSketch.original?'Full STEP body · cells checked against the section and imported surfaces.':'Sketched enclosure · wall '+fmt(c.wall)+' mm · panel thickness '+fmt(c.base)+' mm');
+    $('caseSize').textContent='Inside L × W × H '+displayLength(c.length,c.width,s.peak)+' · '+(caseSketch.original?'Full STEP body · cells checked against the section and imported surfaces.':'Sketched enclosure · wall '+fmt(c.wall)+' mm · panel thickness '+fmt(c.base)+' mm');
   }
   $('caseSTL').disabled=false;
   setScope(c);const tri=caseMesh(c,s);orbitView?.update(c,m,s,tri);

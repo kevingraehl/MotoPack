@@ -112,6 +112,7 @@ function initConversion(){
       menu.append(upcoming);menu.value=motorLibrary[value]?value:'qsTop';showMotorPreview();
     }
     if(n===2){
+      if(!outlineReady)$('convNext').textContent=reference?.drawing?.closed?'Review existing outline →':'Draw enclosure outline →';
       $('convDraw').textContent=outlineReady?'Edit enclosure outline':'Draw enclosure outline';
       $('outlineGuide').textContent=reference?.drawing.scaleSource==='cad'?'Your frame CAD supplied the scale. Trace the inside opening in the side view.':'Your photo is scaled. Trace the usable space above the motor in the side view.';
       $('outlineState').textContent=outlineReady?'Closed and scaled. Continue to battery sizing.':'A scaled, closed outline is required to continue.';
@@ -147,7 +148,7 @@ function initConversion(){
       const next=original||ref.flippedImage||await flippedPhoto(prior);
       if(reference!==ref||outlineReady)return;
       ref.originalPhoto=original?null:prior;ref.flippedImage=original?prior:next;
-      ref.drawing={...ref.drawing,image:next};ref.practice=flipGuide(ref.practice);
+      ref.drawing={...ref.drawing,image:next,points:(ref.drawing.points||[]).map(([x,y])=>[next.w-x,y])};ref.practice=flipGuide(ref.practice);
       board.flipPhoto(ref.drawing);showOrientation();
     }catch(e){$('orientationHint').textContent='Could not flip this image. '+e.message;}
     finally{button.disabled=false;}
@@ -163,10 +164,17 @@ function initConversion(){
       $('newDesign').click();
       delete extra.frameId;
     }
-    $('shareFramePanel').hidden=!!extra.practice||!!extra.projected?.asset.sample; $('allowFrame').checked=false;$('publicFrameName').value='';$('publishFrame').disabled=false;$('frameShareStatus').textContent='';
+    $('legacyFrameShare').hidden=!extra.projected;$('shareLayoutPhoto').hidden=!!extra.projected;
+    $('shareFramePanel').hidden=!!extra.community||!!extra.practice||!!extra.projected?.asset.sample; $('allowFrame').checked=false;$('publicFrameName').value='';$('publishFrame').disabled=false;$('frameShareStatus').textContent='';
     $('batteryMountStatus').textContent='';reference={drawing:d,...extra};board.setReference(d);motorPhoto=null;motorId=null;outlineReady=false;motorOK=false;
     $('rescaleMotor').hidden=true;$('modelStatus').textContent='';showStep(1);
+    if(!$('frameOrientation').hidden){
+      $('flipReason').textContent=(extra.practice===excTape?'This KTM photo shows the right side. ':'')+'The motor drawing shows the left sprocket side. If the bike faces the opposite way, flip the photo so the front and rear line up before placing the motor. You can change this choice here.';
+      $('flipPrompt').showModal();
+    }
   }
+  $('keepOriginal').onclick=()=>$('flipPrompt').close();
+  $('chooseFlip').onclick=()=>{$('flipPrompt').close();$('flipFramePhoto').click();};
   function prerequisite(destination){
     if(destination>0&&!reference)return [0,'Choose a frame or photo and set its scale.'];
     if(destination>1&&!board.motor&&!motorOK)return [1,'Place a motor or choose “Skip motor” to leave it out.'];
@@ -196,7 +204,7 @@ function initConversion(){
     if(destination===7)finishDock();else page(destination);
   }
   $('stepHelpClose').onclick=()=>$('stepHelp').close();
-  $('stepHelpGo').onclick=()=>{$('stepHelp').close();page(helpTarget);};
+  $('stepHelpGo').onclick=()=>{$('stepHelp').close();page(helpTarget);if(helpTarget===2&&!outlineReady)startEnclosure();};
   function resetWizard(){
     clearTimeout(fitTimer);step=0;reference=motorPhoto=motorId=editingId=null;outlineReady=motorOK=false;
     $('landingResume').hidden=!cloud;board.setReference(null);needsFit=true;
@@ -244,10 +252,61 @@ function initConversion(){
   $('topDashboard').onclick=()=>{if(dialog.open)finishDock();dashboard.show(true);};
   $('cloudSave').onclick=async()=>{try{const name=await dashboard.save();$('cloudStatus').textContent='Saved '+name+' to My builds.';}catch(e){$('cloudStatus').textContent=e.message;}};
   $('loadCommunity').onclick=async()=>{const list=$('communityList');list.replaceChildren();
-    if(!signedIn){list.textContent='Shared frames are available on the signed-in website.';return;}
-    try{const entries=await api('frames');if(!entries.length)list.textContent='No frames shared yet.';
+    async function loadPhotos(cursor){
+      const data=await photoApi('/photos'+(cursor?'?cursor='+encodeURIComponent(cursor):''));
+      for(const item of data.items){
+        const button=document.createElement('button');button.textContent=item.name+' · '+(item.credit||'Anonymous');list.append(button);
+        button.onclick=async()=>{
+          try{
+            const d=await photoApi('/photos/'+item.id);
+            if(d.scale)pickReference({...d,points:[],loops:[],closed:false,scaleSource:'photo'},{community:true});
+            else{
+              dialog.close();
+              openConversionEditor({drawing:{name:d.name,image:d.image,scale:null,points:[],loops:[],closed:false},scaleOnly:'frame',finish(applied,drawing){
+                if(applied)pickReference(drawing,{community:true});else showStep(0);
+              }});
+            }
+          }catch(e){list.append(document.createTextNode(e.message));}
+        };
+      }
+      if(data.cursor){
+        const more=document.createElement('button');more.textContent='More photos';list.append(more);
+        more.onclick=async()=>{more.disabled=true;try{await loadPhotos(data.cursor);more.remove();}catch(e){more.disabled=false;more.textContent='Retry loading photos';}};
+      }
+    }
+    try{await loadPhotos();}catch(e){list.textContent=e.message;return;}
+    if(!signedIn){if(!list.childElementCount)list.textContent='No photos shared yet.';return;}
+    try{const entries=await api('frames');if(!entries.length&&!list.childElementCount)list.textContent='No frames shared yet.';
       for(const item of entries){const b=document.createElement('button');b.textContent=item.name;list.append(b);b.onclick=async()=>{try{const d=await api(item.id);if(d.model)startFrame(d.model.asset,d.model.rotation,d.name);else pickReference({...d,points:[],loops:[],closed:false,scaleSource:'photo'});}catch(e){list.textContent=e.message;}};}
     }catch(e){list.textContent=e.message;}
+  };
+  async function photoApi(path,data){
+    if(location.protocol==='file:')throw Error('Open the hosted MotoPack builder to use the community library.');
+    const response=await fetch(builderApi+path,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{});
+    const body=await response.json().catch(()=>null);
+    if(!response.ok||!body)throw Error(body?.error||'Photo library unavailable. Please try again.');
+    return body;
+  }
+  let sharedDrawing=null;
+  function sharePhoto(drawing){
+    sharedDrawing=drawing;$('photoShareForm').reset();$('photoFileLabel').hidden=!!drawing;
+    $('communityPhotoFile').required=!drawing;$('photoResult').textContent='';$('postPhoto').disabled=false;
+    $('photoShareDialog').showModal();
+  }
+  $('contributePhoto').onclick=()=>sharePhoto(null);
+  $('shareLayoutPhoto').onclick=()=>sharePhoto(reference.drawing);
+  $('photoShareDialog').oncancel=e=>{if($('cancelPhoto').disabled)e.preventDefault();};
+  $('cancelPhoto').onclick=()=>$('photoShareDialog').close();
+  $('photoShareForm').onsubmit=async e=>{
+    e.preventDefault();const button=$('postPhoto');if(button.disabled)return;
+    button.disabled=true;$('cancelPhoto').disabled=true;$('photoResult').textContent='Publishing…';
+    try{
+      const file=sharedDrawing?new Blob([Uint8Array.from(atob(sharedDrawing.image.url.split(',')[1]),c=>c.charCodeAt(0))]):$('communityPhotoFile').files[0];
+      const image=await rasterPhoto(file);
+      const scale=sharedDrawing?.scale?sharedDrawing.scale*sharedDrawing.image.w/image.w:null;
+      await photoApi('/photos',{name:$('photoModel').value.trim(),credit:$('photoCredit').value.trim(),consent:$('photoConsent').checked,image,scale});
+      $('photoResult').textContent='Published as '+($('photoCredit').value.trim()||'Anonymous')+'.';
+    }catch(error){button.disabled=false;$('photoResult').textContent=error.message;}finally{$('cancelPhoto').disabled=false;}
   };
   $('publishFrame').onclick=async()=>{
     if(!$('allowFrame').checked||!$('publicFrameName').value.trim()){$('frameShareStatus').textContent='Check the sharing permission and enter a public frame name.';return;}
@@ -309,7 +368,7 @@ function initConversion(){
       $('wizardFitResult').textContent+=' Check the highlighted enclosure contacts or use AUTO to recalculate.';
       needsFit=true;
     }
-    showStep(needsFit?2:3);
+    showStep(3);
   }
   $('landingBuilder').onclick=()=>begin('advanced');
   $('convClose').onclick=finishDock;steps.forEach((b,i)=>b.onclick=()=>navigate(i));
@@ -317,7 +376,7 @@ function initConversion(){
   dialog.addEventListener('click',e=>{
     if(['wBms','wWires','wPower','wLiner','demoEdit'].includes(e.target.id))$('guidedReturn').hidden=false;
   },true);
-  $('convNext').onclick=()=>navigate(step+1);
+  $('convNext').onclick=()=>step===2&&!outlineReady?startEnclosure():navigate(step+1);
   $('ktmPreview').src=conversionSamples.photo;$('frameThumb').src=conversionSamples.frameDrawing;
   document.querySelector('.uploadPic').style.backgroundImage='linear-gradient(#11243b55,#11243b66),url("'+conversionSamples.photo+'")';
   const practiceBike={width:2078,height:1460,anchors:[[641,791],[965,668]],mm:214.5573,
@@ -341,12 +400,7 @@ function initConversion(){
         dialog.close();
         openConversionEditor({drawing,scaleOnly:'frame',async finish(applied,d){
           if(!applied){showStep(0);return;}
-          if(scaleGuide===excTape){
-            try{
-              const image=await flippedPhoto(d.image);
-              pickReference({...d,image},{originalPhoto:d.image,flippedImage:image,practice:flipGuide(excTape)});
-            }catch(e){showStep(0);$('frameWizardStatus').textContent='Could not prepare the KTM photo. '+e.message;}
-          }else pickReference(d,{practice:scaleGuide||(distance===214.5573?practiceBike:null)});
+          pickReference(d,{practice:scaleGuide||(distance===214.5573?practiceBike:null)});
         }});
         if(drawing){$('skScale').click();return;}
       }catch(e){$('frameWizardStatus').textContent=e.message;return;}
