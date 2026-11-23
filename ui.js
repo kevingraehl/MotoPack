@@ -89,10 +89,12 @@ for(const option of fields.place.options){
   box.oninput=()=>{if(box.checked)sheetLocations.add(box.value);else sheetLocations.delete(box.value);};
   sheetBoxes.push(box);
 }
-let routeChoice=0;
+let routeChoice=0,fillLowerFirst=true;
 const spacerChecks=['sqLeft','sqRight','sqTop','sqBottom','sqTrimSheet','sqGroupsOnly','sqRootLive'];
 function apply(config){
-  $('nickelWidth').value=config.nickelWidth??7;
+  fillLowerFirst=config.fillLowerFirst!==false;
+  $('plateMaterial').value=config.plateMaterial||(config.nickelWidth?'strip':'nickel');
+  $('nickelWidth').value=config.nickelWidth??16;
   $('nickelThickness').value=config.nickelThickness??.15;
   $('sqVentShape').value=config.sqVentShape||'diamond';
   if(!$('sqVentShape').value)$('sqVentShape').value='diamond';
@@ -113,7 +115,7 @@ function apply(config){
 function capVentLimit(depth){return Math.max(0,Math.min(16,Math.floor((depth-4)*2)/2));}
 function read(){
   $('sqCapVentWidth').max=capVentLimit(fields.sqDepth.value);
-  const c={nickelWidth:Number($('nickelWidth').value)||7,nickelThickness:Number($('nickelThickness').value)||.15,sqVentShape:$('sqVentShape').value,sqCapVentWidth:Number($('sqCapVentWidth').value),sqVentWidth:Number($('sqVentWidth').value),...Object.fromEntries(spacerChecks.map(id=>[id,$(id).checked])),routeChoice,caseSides:[...caseSideSettings],holder:$('holder').checked,squiggleOn:$('squiggleOn').checked,
+  const c={fillLowerFirst,plateMaterial:$('plateMaterial').value,nickelWidth:Number($('nickelWidth').value)||7,nickelThickness:Number($('nickelThickness').value)||.15,sqVentShape:$('sqVentShape').value,sqCapVentWidth:Number($('sqCapVentWidth').value),sqVentWidth:Number($('sqVentWidth').value),...Object.fromEntries(spacerChecks.map(id=>[id,$(id).checked])),routeChoice,caseSides:[...caseSideSettings],holder:$('holder').checked,squiggleOn:$('squiggleOn').checked,
     squiggleGuards:$('squiggleGuards').checked,squiggleCells:$('squiggleCells').checked,surfaceItems:structuredClone(surfaceItems)};
   for(const [key,input] of Object.entries(fields)){
     if(!input.checkValidity())throw Error('Check '+input.parentElement.firstChild.textContent+'.');
@@ -223,7 +225,7 @@ function render(){
 
     if(c.groupPlan==='auto'){
       let first=1;
-      $('groupPlanNote').textContent=bankGroupCounts(c.series,p,m.bankCells).map((n,b)=>{
+      $('groupPlanNote').textContent=bankGroupCounts(c.series,p,m.bankCells,c.axis==='vertical'&&c.fillLowerFirst!==false).map((n,b)=>{
         const label=n?'S'+first+(n>1?'–S'+(first+n-1):''):'No complete group';
         first+=n;return 'Bank '+(b+1)+' · '+label;
       }).join(' | ');
@@ -234,6 +236,7 @@ function render(){
     $('group').textContent=seriesFit(m.count,c,m);
     $('sheetInfo').textContent=c.material==='none'||!c.sheet?'No separator thickness included.':c.locations.length+' locations selected · '+fmt(c.sheet)+' mm thick · '+fmt(c.sheetTrim)+' mm total trim.';
     const targetP=targetParallel(c),activeCount=c.series*p;
+    $('removeUnused').hidden=!valid||!activeCount||m.count<=activeCount;
     $('fitSeries').textContent=!valid?'No complete layout for this bank split.':c.series+'S'+p+'P in the viewer · '+activeCount+' active cells · '+fmt(p*c.cellAh)+' Ah · '+fmt(c.series*c.nominal)+' V nominal'+(p<targetP?' · Target '+c.series+'S'+targetP+'P needs more positions in the required groups.':m.count>activeCount?' · '+(m.count-activeCount)+' unused positions.':'');
     refreshInlineRoute();
     $('packSizeLabel').textContent='Pack L × W × H, '+measurementUnit;$('size').textContent=displayLength(m.x,m.y,m.z).split(' ').slice(0,-1).join(' ');
@@ -424,10 +427,18 @@ endGrid.addEventListener('click',e=>{
 });
 document.querySelectorAll('[data-preset]').forEach(button=>button.onclick=()=>{
   const settings={...defaults};
+  if(button.dataset.preset==='hyperbee')Object.assign(settings,{mode:'pack',axis:'flat',cols:5,rows:14,banks:2,pattern:'short',series:20,parallel:6,groupPlan:'across',d:21.7,len:70.2,gap:.5,rowGap:.5,deckGap:2,holder:false});
   if(button.dataset.preset==='lightbee')Object.assign(settings,{axis:'flat',cols:5,rows:20,banks:2,pattern:'regular',series:20,parallel:10,groupPlan:'split'});
   if(button.dataset.preset==='flat')Object.assign(settings,{axis:'flat',rows:2,banks:1});
   if(button.dataset.preset==='coupon')Object.assign(settings,{cols:2,rows:2,banks:1,gap:1.6,rowGap:1.6,pattern:'regular',holder:true});
-  caseSketch=null;corners=[];endLift=[0,0];omitted.clear();reversedCells.clear();apply(settings);render();
+  caseSketch=null;corners=[];endLift=[0,0];omitted.clear();reversedCells.clear();
+  if(button.dataset.preset==='hyperbee'){
+    for(let k=0;k<4;k++)omitted.add('13-'+k+'/1');
+    for(const k of [0,3])omitted.add('13-'+k+'/0');
+    $('projectName').value='Hyper Bee 20S6P';
+    alternateGroupEnds(settings,layout(settings,omitted));
+  }
+  apply(settings);render();
 });
 document.querySelectorAll('[data-pack-preset]').forEach(button=>button.onclick=()=>{
   const match=/(\d+)s(\d+)p/.exec(button.dataset.packPreset),series=+match[1],parallel=+match[2];
@@ -437,9 +448,25 @@ document.querySelectorAll('[data-pack-preset]').forEach(button=>button.onclick=(
   const groupPlan=parallel===5?'rowGroups':parallel===8?'columnGroups':'auto';
   const settings={...defaults,...cell,mode:'pack',axis:'vertical',pattern:'custom',cols:columns,rows,banks,gap:0,rowGap:0,shift,
     series,parallel,capacityMode:'parallel',groupPlan,holder:false,squiggleOn:true,squiggleGuards:true,sqDirection:parallel===8?'columns':'rows',sqMaxWidth:115.75};
-  caseSketch=null;corners=[];endLift=[0,0];omitted.clear();reversedCells.clear();apply(settings);$('projectName').value=series+'S'+parallel+'P EVE 40P';render();
+  caseSketch=null;corners=[];endLift=[0,0];omitted.clear();reversedCells.clear();if(groupPlan==='rowGroups'||groupPlan==='columnGroups'){
+    for(const cell of layout(settings).grid)for(let bank=0;bank<banks;bank++){
+      const group=groupPlan==='rowGroups'?bank*rows+cell.r:bank*columns+cell.k;
+      if(group>=series)omitted.add(cell.id+'/'+bank);
+    }
+  }
+  alternateGroupEnds(settings,layout(settings,omitted));
+  apply(settings);$('projectName').value=series+'S'+parallel+'P EVE 40P';render();
   $('bankView').value=String(banks-1);render();
 });
+$('removeUnused').onclick=()=>{
+  if(!current)return;
+  const {c,m}=current;
+  const plan={...c,fillLowerFirst:true},groups=groupMap(plan,m);
+  if(![...groups.values()].some(Boolean))return;
+  fillLowerFirst=true;
+  for(const [id,group] of groups)if(!group){omitted.add(id);reversedCells.delete(id);}
+  alternateGroupEnds(plan,layout(plan,omitted));render();
+};
 function setHolderSpacing(){
   const c={d:+fields.d.value,slack:+fields.slack.value,gap:+fields.gap.value,rowGap:+fields.rowGap.value};
   const minimum=Math.ceil(((c.d+c.slack)/Math.cos(Math.PI/48)+1-c.d)*100)/100;

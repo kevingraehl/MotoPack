@@ -103,7 +103,7 @@ function bwMakePlan(c,best){
   if(parallel<1)throw Error(capacity+' cells fit. This voltage needs at least '+c.series+'. Try fewer series groups or change the layout.');
   Object.assign(c,{parallel,banks:best.banks,rows:best.rows,cols:best.cols});
   const full=layout(c),skip=new Set(),total=parallel*c.series;
-  const quotas=bankGroupCounts(c.series,parallel,full.bankCells);
+  const quotas=bankGroupCounts(c.series,parallel,full.bankCells,c.axis==='vertical'&&c.fillLowerFirst!==false);
   for(const [i,cell] of full.grid.entries()){
     for(let bank=0;bank<c.banks;bank++)if(i>=quotas[bank]*parallel)skip.add(cell.id+'/'+bank);
   }
@@ -177,6 +177,9 @@ $('bwSketch').onclick=()=>{
     if(sketch.returnValue!=='applied'){batteryWizard.showModal();$('bwSketch').focus();}
   },{once:true});
   $('openSketch').click();
+};
+$('bwHyper').onclick=()=>{
+  batteryWizard.close();document.querySelector('[data-preset="hyperbee"]').click();
 };
 $('bwCancel').onclick=()=>batteryWizard.close();
 bwForm.noValidate=true;

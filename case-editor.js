@@ -273,7 +273,7 @@ function initCaseEditor(){
   function open(options=null){
     for(const input of $('skLayers').querySelectorAll('input'))input.checked=$(input.dataset.layer).checked;
     practice=null;guided=options?.finish?options:null;dialog.returnValue="";
-    $('skBattery').hidden=!!(guided?.scaleOnly||guided?.motor);
+    $('skBattery').hidden=!!guided;
     ++revision;loading=false;releasePdf();d=caseSketch?structuredClone(caseSketch):blank();
     if(guided?.drawing)d=guided.drawing;
     else if(guided?.scaleOnly)d={...blank(),scale:null};
@@ -361,6 +361,19 @@ function initCaseEditor(){
     const raw=cleanLoop(d.points);
     let points=raw;
     try{
+      if(tool==='draw'&&$('skAxis').value==='ortho'&&raw.length>=3){
+        const angle=Number($('gridAngle').value)*Math.PI/180;
+        const first=rotateXY(raw[0],-angle),last=rotateXY(raw.at(-1),-angle),prev=rotateXY(raw.at(-2),-angle);
+        if(Math.abs(first[0]-last[0])>1e-5&&Math.abs(first[1]-last[1])>1e-5){
+          const corner=Math.abs(last[0]-prev[0])>Math.abs(last[1]-prev[1])?[last[0],first[1]]:[first[0],last[1]];
+          points=cleanLoop([...raw,rotateXY(corner,angle)]);
+          try{checkOutline(points);}catch{
+            // Extend the final edge to meet the axis through the first point.
+            const end=Math.abs(last[0]-prev[0])>Math.abs(last[1]-prev[1])?[first[0],last[1]]:[last[0],first[1]];
+            points=cleanLoop([...raw.slice(0,-1),rotateXY(end,angle)]);
+          }
+        }
+      }
       if(d.freehandTrace){
         points=cleanLoop(smoothTrace(raw,smoothingLimit(),true));
         try{checkOutline(points);}catch{points=raw;}
@@ -496,8 +509,8 @@ function initCaseEditor(){
     const angle=Math.atan2(dy,dx),grid=Number($('gridAngle').value)*Math.PI/180,quarter=Math.PI/2;
     const axis=$('skAxis').value;
     let heading=grid+Math.round((angle-grid)/quarter)*quarter;
-    if(axis!=='free')heading=grid+(axis==='y'?quarter:0);
-    else if(!e.shiftKey){
+    if(axis==='x'||axis==='y')heading=grid+(axis==='y'?quarter:0);
+    else if(axis==='free'&&!e.shiftKey){
       if(!$('orthoSnap').checked)return p;
       if(prev){
         const normal=Math.atan2(last[1]-prev[1],last[0]-prev[0])+quarter;
@@ -701,7 +714,7 @@ function initCaseEditor(){
       if(guided||explicitAuto||battery)fields.banks.value=d.flatBanks||2;
       if(fitted){apply(fitted.c);placements=fitted.pose;omitted.clear();fitted.skip.forEach(id=>omitted.add(id));reversedCells.clear();}
       render();
-      if(battery)dialog.addEventListener('close',()=>document.dispatchEvent(new Event('sketchbatterybuild')),{once:true});
+      if(battery&&!guided)dialog.addEventListener('close',()=>document.dispatchEvent(new Event('sketchbatterybuild')),{once:true});
       dialog.close('applied');
     }catch(e){
       message(e.message,true);$('outlinePromptText').textContent=e.message;

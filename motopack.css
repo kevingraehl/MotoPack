@@ -286,3 +286,11 @@ body:has(#batteryWizard[open]){overflow:hidden}
   #sketchDialog #skBoard{min-height:clamp(150px,26dvh,270px);flex:1 0 auto}
   #sketchDialog #panelPlanner,#sketchDialog #skAlignment,#sketchDialog #skLayers{flex:none}
 }
+
+.skTally{height:auto;flex:0 0 auto;overflow:visible}
+.skTally small{display:block}
+dialog.inlineTool[open],#nickelViewer[open]{position:static;inset:auto;box-sizing:border-box;width:100%;margin:.5rem 0;max-width:100%;max-height:none;padding:.75rem;overflow:visible}
+#nickelViewer #nickelStage{width:100%!important;height:clamp(180px,32vh,360px)!important}
+#bwForm footer{position:static}
+
+#viewer>#sceneLayers{margin:.2rem 0;max-height:24dvh;overflow:auto;flex:0 0 auto}

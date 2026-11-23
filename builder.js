@@ -469,7 +469,7 @@ function showBuilder(c,m,s){
   $('bmsAllowance').textContent=c.bmsMode==='off'?'Add the measured board or enclosure in the BMS editor to reserve its space.':'BMS box included · '+displayLength(c.bmsL,c.bmsW,c.bmsH)+'. Check connector access and cable bends.';
   $('hard').checked=c.mode!=='pack';
   const alerts=s.cells.filter(p=>p.status!=='clear'),outside=alerts.filter(p=>p.status==='outside').length;
-  $('contacts').textContent=c.mode==='pack'?'Auto-size · '+m.count+' cells':outside+' outside (red) · '+(alerts.length-outside)+' touching (amber) · '+(m.count-alerts.length)+' clear';
+  $('contacts').textContent=c.mode==='pack'?'Auto-size · '+(activeParallel(m.count,c,m)*c.series)+' active cells · '+m.count+' positions':outside+' outside (red) · '+(alerts.length-outside)+' touching (amber) · '+(m.count-alerts.length)+' clear';
   $('issues').hidden=c.mode==='pack'||!alerts.length;
   $('contactList').innerText=c.mode==='pack'?'':alerts.map(p=>p.id+' — '+p.status+' · '+p.faces).join('\n');
   for(const key of ['outL','outW','outH'])fields[key].parentElement.hidden=c.mode!=='both';
@@ -537,7 +537,7 @@ function scheduleSave(){
 }
 function restore(doc,buildId=null){
   if(!doc||doc.version!==1||!doc.settings||!Array.isArray(doc.corners)||doc.corners.length>200)throw Error('Invalid motoPack project.');
-  const config={...defaults,...doc.settings};
+  const config={...defaults,fillLowerFirst:false,...doc.settings};
   if(!doc.settings.cellModel)config.cellModel=cellCatalog.find(c=>['d','len','cellAh','nominal'].every(k=>c[k]===config[k]))?.cellModel||'custom';validateSurfaceItems(config.surfaceItems??[]);
   if(config.shift!==50){
     if(config.pattern==='offset')config.pattern='custom';

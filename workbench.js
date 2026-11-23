@@ -66,7 +66,7 @@ function restoreSessionView(v){
   if([...$('scope').options].some(o=>o.value===v.scope))$('scope').value=v.scope;
   for(const el of $('layerBanks').querySelectorAll('select'))el.value=['top','bottom'].includes(v.bankEnds?.[el.dataset.bank])?v.bankEnds[el.dataset.bank]:'both';
   for(const input of $('layerBanks').querySelectorAll('input'))input.checked=(!v.scope||v.scope==='all'||input.value===v.scope)&&!v.hiddenBanks?.includes(+input.value);
-  for(const id of ['showFrame','showMotor','showCells','showBMS'])$(id).checked=v.layers?.[id]!==false;
+  for(const id of ['showFrame','showMotor','showCells','showBMS','groupHighlight'])$(id).checked=v.layers?.[id]!==false;
   for(const id of ['showCase','showSheets'])if(typeof v[id]==='boolean')$(id).checked=v[id];
   if(typeof v.spacers==='boolean')$('spacers').checked=v.spacers;
   if(typeof v.locked==='boolean')$('locked').checked=v.locked;
@@ -334,12 +334,62 @@ function addSeriesLabels(parts,c,m,s,bank,groups){
     seriesAtlas=new THREE.CanvasTexture(canvas);
   }
   const vertices=[],uv=[],indices=[],axis=cellBases[c.axis].a;
+  const highlighted=$('groupHighlight').checked;
+  const members=new Map();
+  const bankCells=m.bankCells[bank];
+  for(const cell of bankCells){
+    const group=groups.get(cell.id+'/'+bank);
+    if(!group)continue;
+    if(!members.has(group))members.set(group,[]);
+    members.get(group).push(cell);
+  }
+  const labels=new Set([...members.values()].map(cells=>cells[Math.floor(cells.length/2)].id));
+  if(highlighted){
+    const count=[...members.values()].reduce((n,cells)=>n+cells.length,0);
+    const caps=new THREE.InstancedMesh(new THREE.CircleGeometry(c.d*.47,32),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),2*count);
+    let index=0;
+    for(const [i,cell] of bankCells.entries()){
+      const group=groups.get(cell.id+'/'+bank);
+      if(!group)continue;
+      for(const sign of [-1,1]){
+        const normal=new THREE.Vector3().setComponent(axis,sign),obj=new THREE.Object3D();
+        obj.position.fromArray(s.cells[m.bankOffsets[bank]+i].xyz).addScaledVector(normal,c.len/2+.55);
+        obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+        obj.updateMatrix();caps.setMatrixAt(index,obj.matrix);caps.setColorAt(index++,new THREE.Color(groupColor(group)));
+      }
+    }
+    parts.add(caps);
+    // Join neighboring cap highlights on their own terminal face.
+    const bands=[],colors=[],positions=new Map(bankCells.map((cell,i)=>[cell.id,new THREE.Vector3(...s.cells[m.bankOffsets[bank]+i].xyz)]));
+    for(const [group,cells] of members){
+      const color=new THREE.Color(groupColor(group));
+      for(const cell of cells)for(const [dr,dk] of [[0,1],[1,-2],[1,-1],[1,0],[1,1],[1,2]]){
+        const neighbor=(cell.r+dr)+'-'+(cell.k+dk);
+        if(groups.get(neighbor+'/'+bank)!==group)continue;
+        const a=positions.get(cell.id),b=positions.get(neighbor);
+        if(!b||a.distanceTo(b)>1.18*(c.d+Math.max(c.gap,c.rowGap)))continue;
+        for(const sign of [-1,1]){
+          const normal=new THREE.Vector3().setComponent(axis,sign);
+          const side=new THREE.Vector3().subVectors(b,a).cross(normal).normalize().multiplyScalar(c.d*.27);
+          const start=a.clone().addScaledVector(normal,c.len/2+.54),end=b.clone().addScaledVector(normal,c.len/2+.54);
+          for(const [point,k] of [[start,1],[end,1],[end,-1],[start,1],[end,-1],[start,-1]]){
+            bands.push(...point.clone().addScaledVector(side,k).toArray());colors.push(color.r,color.g,color.b);
+          }
+        }
+      }
+    }
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(bands,3));
+    geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+    parts.add(new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide})));
+  }
   for(const [i,cell] of m.bankCells[bank].entries()){
     const center=s.cells[m.bankOffsets[bank]+i].xyz,g=groups.get(cell.id+'/'+bank)||0;
+    if(!g||(highlighted&&!labels.has(cell.id)))continue;
     for(const sign of [-1,1]){
       const normal=new THREE.Vector3().setComponent(axis,sign);
       const up=new THREE.Vector3(0,axis===2?1:0,axis===2?0:1),right=new THREE.Vector3().crossVectors(up,normal);
-      const pos=new THREE.Vector3(...center).addScaledVector(normal,c.len/2+.12),first=vertices.length/3;
+      const pos=new THREE.Vector3(...center).addScaledVector(normal,c.len/2+.65),first=vertices.length/3;
       for(const [x,y] of [[0,0],[1,0],[1,1],[0,1]]){
         vertices.push(...pos.clone().addScaledVector(right,(x-.5)*c.d*.77).addScaledVector(up,(y-.5)*c.d*.77).toArray());
         uv.push((g%16+x)/16,1-(Math.floor(g/16)+1-y)/10);

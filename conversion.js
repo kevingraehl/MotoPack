@@ -68,6 +68,13 @@ function designSummary(){
 }
 const money=n=>n.toLocaleString('en-US',{style:'currency',currency:'USD'});
 let refillWizardDirection;
+function showSideTool(tool,anchor){
+  const wizard=$('conversion'),page=wizard.open&&wizard.querySelector('[data-page="'+wizard.dataset.step+'"]');
+  const host=page||anchor?.closest('section')||$('controls');
+  host.prepend(tool);tool.classList.add('inlineTool');
+  if(!tool.open)tool.show();
+  tool.scrollIntoView({block:'nearest'});
+}
 function initConversion(){
   const dialog=$('conversion'),steps=[...$('convSteps').children],pages=[...dialog.querySelectorAll('[data-page]')];
   $('controls').before(dialog);
@@ -96,6 +103,7 @@ function initConversion(){
     $('convPrev').disabled=n===0;$('convNext').textContent=nextNames[n]+(n<6?' →':'');
     clearTimeout(fitTimer);
     if(n===3&&needsFit)scheduleFit();
+    if(n===4&&current)openConnectionRoute(true);
     if(n===4&&current)$('routingTarget').textContent=seriesFit(current.m.count,current.c,current.m)+' · Each S number identifies one parallel group.';
     if(n===6)showPrintQuote();
     updateNavigation();dialog.scrollTop=0;
@@ -170,7 +178,7 @@ function initConversion(){
     $('rescaleMotor').hidden=true;$('modelStatus').textContent='';showStep(1);
     if(!$('frameOrientation').hidden){
       $('flipReason').textContent=(extra.practice===excTape?'This KTM photo shows the right side. ':'')+'The motor drawing shows the left sprocket side. If the bike faces the opposite way, flip the photo so the front and rear line up before placing the motor. You can change this choice here.';
-      $('flipPrompt').showModal();
+      showSideTool($('flipPrompt'),document.activeElement);
     }
   }
   $('keepOriginal').onclick=()=>$('flipPrompt').close();
@@ -199,7 +207,7 @@ function initConversion(){
     const block=prerequisite(destination);
     if(block){
       helpTarget=block[0];$('stepHelpReason').textContent=block[1];
-      $('stepHelpGo').textContent='Go to '+stepNames[helpTarget];$('stepHelp').showModal();return;
+      $('stepHelpGo').textContent='Go to '+stepNames[helpTarget];showSideTool($('stepHelp'),document.activeElement);return;
     }
     if(destination===7)finishDock();else page(destination);
   }
@@ -244,7 +252,13 @@ function initConversion(){
     models.value=c.cellModel;
     $('targetAxis').value=caseSketch.upright?'vertical':caseSketch.endFace?'flat':'cross';
     $('targetBanks').value=caseSketch.flatBanks||c.banks;
-    $('targetText').value=Math.round((caseSketch.targetVolts||c.series*c.nominal)/c.nominal)+'S '+targetParallel(c)+'P';
+    const series=Math.round((caseSketch.targetVolts||c.series*c.nominal)/c.nominal);
+    const trial={...sketchPackConfig(caseSketch,c,caseSketch.flatBanks||c.banks),series};
+    let fit;
+    try{fit=buildContourPack(trial,caseProfile(caseSketch));}catch{ /* Keep axis and bank controls available for another fit. */ }
+    const maxP=fit?activeParallel(fit.count,{...fit.c,series,capacityMode:'parallel',parallel:Math.floor(fit.count/series)},layout(fit.c,fit.skip)):0;
+    $('targetText').value=maxP?series+'S '+maxP+'P':'';
+    $('targetFeedback').textContent=fit?fit.count+' positions · '+maxP+'P fits at '+series+'S. Choose a smaller pack if desired.':'Adjust the case or cell direction to find a fit.';
     describeBanks();$('targetText').focus();
   });
   const dashboard=setupBuildDashboard(api,startMoto,startBattery);
@@ -291,7 +305,7 @@ function initConversion(){
   function sharePhoto(drawing){
     sharedDrawing=drawing;$('photoShareForm').reset();$('photoFileLabel').hidden=!!drawing;
     $('communityPhotoFile').required=!drawing;$('photoResult').textContent='';$('postPhoto').disabled=false;
-    $('photoShareDialog').showModal();
+    showSideTool($('photoShareDialog'),document.activeElement);
   }
   $('contributePhoto').onclick=()=>sharePhoto(null);
   $('shareLayoutPhoto').onclick=()=>sharePhoto(reference.drawing);
@@ -542,7 +556,7 @@ function initConversion(){
     if(!part&&shapeRole==='Motor'){spec.kind='block';spec.L=180;spec.W=160;spec.H=160;}
     editingId=part?.id||null;$('shapeKind').value=spec.kind;$('shapeName').value=part?.name||(shapeRole==='Motor'?'Custom motor':'Battery tray');
     for(const key of ['L','W','H','Wall'])$('shape'+key).value=spec[key];
-    $('shapeWall').disabled=spec.kind==='block';$('shapeError').textContent='';$('shapeSave').textContent=editingId?'Update object':'Add to assembly';$('partShape').showModal();
+    $('shapeWall').disabled=spec.kind==='block';$('shapeError').textContent='';$('shapeSave').textContent=editingId?'Update object':'Add to assembly';showSideTool($('partShape'),document.activeElement);
   }
   for(const id of ['customPart','convTray','skCustomPart','batteryTray'])$(id).onclick=()=>shape();
   for(const button of document.querySelectorAll('.addKtmPack')){
@@ -762,7 +776,7 @@ function initConversion(){
   $('wWires').onclick=()=>openSurface('Wire');
   $('wLiner').onclick=()=>openSurface($('wLinerMaterial').value);
   $('wPower').onclick=()=>{const diameter=openSurface('Wire');diameter.value='';diameter.placeholder='Measured cable OD';};
-  for(const id of ['templateOpen','convPrint'])$(id).onclick=()=>{$('paperError').textContent='';$('paperDialog').showModal();};
+  for(const id of ['templateOpen','convPrint'])$(id).onclick=()=>{$('paperError').textContent='';showSideTool($('paperDialog'),document.activeElement);};
   $('paperClose').onclick=()=>$('paperDialog').close();
   $('paperDownload').onclick=()=>{
     try{
@@ -802,7 +816,7 @@ function initConversion(){
   };
   page(0);
   const start=new URLSearchParams(location.search).get('start');
-  if(start==='battery'||start==='motorcycle')setTimeout(()=>begin(start==='battery'?'battery':'wizard'),0);
+  if(['battery','motorcycle','advanced'].includes(start))setTimeout(()=>begin(start==='motorcycle'?'wizard':start),0);
 
   if(cloud&&new URLSearchParams(location.search).get('account')==='ready'){
     history.replaceState(null,'',location.pathname);

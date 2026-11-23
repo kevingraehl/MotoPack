@@ -1,10 +1,21 @@
 // Render the active layout on demand so edited groups and polarity always match.
 function openConnectionRoute(inline=false){
   const dialog=$('routeDialog'),summary=$('routeSummary'),controls=$('routeControls');
-  const host=inline===true?$('inlineRoute'):dialog;
+  let host=$('inlineRoute');
+  const wizard=$('conversion');
+  if(wizard.open){
+    const page=wizard.querySelector('[data-page="'+wizard.dataset.step+'"]');
+    let slot=page.querySelector('.wizardRoute');
+    if(!slot){slot=document.createElement('div');slot.className='wizardRoute';page.append(slot);}
+    host=slot;
+  }else if(inline!==true){
+    if($('controls').hidden)$('toggleSetup').click();
+    document.querySelector('button[data-topic="Pack size and cells"]')?.click();
+    $('liveRoute').open=true;
+  }
   const oldGroup=$('routeGroup').value,oldBank=$('nickelBank').value;
   host.append(summary,controls);
-  if(host===dialog&&!dialog.open)dialog.showModal();
+  if(inline!==true)host.scrollIntoView({block:'nearest'});
   controls.hidden=true;
   if(!current){summary.textContent='Build a cell layout first.';return;}
   const {c,m}=current;
@@ -15,7 +26,7 @@ function openConnectionRoute(inline=false){
     fields.groupPlan.value=value;routeChoice=choice;
     const next={...c,groupPlan:value,routeChoice:choice};
     alternateGroupEnds(next,m);render();
-    if(host===dialog)openConnectionRoute();
+    if(wizard.open)openConnectionRoute(true);
   }
   grouping.onchange=()=>updatePlan(grouping.value,0);
   for(const child of controls.children)child.hidden=false;
@@ -35,7 +46,7 @@ function openConnectionRoute(inline=false){
   }
   $('otherRoute').disabled=!otherChoices.length;
   $('otherRoute').onclick=()=>updatePlan('auto',otherChoices[Math.floor(Math.random()*otherChoices.length)]);
-  const folded=effectiveGroupPlan(c)==='folded',half=bankGroupCounts(c.series,activeParallel(m.count,c,m),m.bankCells)[0];
+  const folded=effectiveGroupPlan(c)==='folded',half=bankGroupCounts(c.series,activeParallel(m.count,c,m),m.bankCells,c.axis==='vertical'&&c.fillLowerFirst!==false)[0];
   $('routeChoiceInfo').textContent=(folded&&half>0&&half<c.series?'Bank 1: S1–S'+half+'. Bank 2: S'+(half+1)+'–S'+c.series+'. Join S'+half+' positive to S'+(half+1)+' negative with one inter-bank bridge. ':'')+
     (automatic?(choice?'Alternative '+choice+'.':'Best suggested sweep · favors short hops between cells.'):'');
   const groups=groupMap(c,m),parallel=activeParallel(m.count,c,m);
@@ -117,7 +128,7 @@ function openConnectionRoute(inline=false){
       marks+='<circle cx="'+cell.u+'" cy="'+cell.v+'" r="'+c.d*.45+'" fill="'+(overview&&sg?groupColor(sg):sg===g?'#779db5':'#374654')+'"/>';
     }
     function strip(p,q,color){
-      marks+='<line x1="'+p.u+'" y1="'+p.v+'" x2="'+q.u+'" y2="'+q.v+'" stroke="'+color+'" stroke-width="'+c.d*.15+'"/>';
+      marks+='<line x1="'+p.u+'" y1="'+p.v+'" x2="'+q.u+'" y2="'+q.v+'" stroke="'+color+'" stroke-linecap="round" stroke-width="'+(color.startsWith('hsl')?c.d*.78:c.d*.15)+'"/>';
     }
     let visibleLinks=0;
     for(let group=overview?1:g;group<=(overview?c.series:g);group++){
@@ -131,7 +142,13 @@ function openConnectionRoute(inline=false){
         }
       }
       if(route.bridge&&visible(route.bridge[0],true)&&visible(route.bridge[1],false)){strip(...route.bridge,'#ffc242');visibleLinks++;}
-      for(const cell of nodes[group].filter(cell=>cell.bank===bank))marks+='<text x="'+cell.u+'" y="'+cell.v+'" text-anchor="middle" dominant-baseline="central" font-size="'+c.d*.4+'" fill="'+(overview?'#101a28':'white')+'">'+(overview?'S'+group:label(cell))+'</text>';
+      const members=nodes[group].filter(cell=>cell.bank===bank);
+      const highlight=overview&&$('groupHighlight').checked;
+      if(highlight)for(const [i,p] of members.entries()){
+        const q=members[i-1];
+        if(q&&Math.hypot(p.u-q.u,p.v-q.v)<1.55*(c.d+Math.max(c.gap,c.rowGap)))strip(p,q,groupColor(group));
+      }
+      for(const cell of highlight?members.slice(Math.floor(members.length/2),Math.floor(members.length/2)+1):members)marks+='<text x="'+cell.u+'" y="'+cell.v+'" text-anchor="middle" dominant-baseline="central" font-size="'+c.d*.4+'" fill="'+(overview?'#101a28':'white')+'">'+(overview?'S'+group:label(cell))+'</text>';
     }
     $('mapStatus').textContent=visibleLinks+' links on this face. '+(folded?'A gold ring marks the inter-bank bridge terminal. ':'')+(overview?'Choose a series group to inspect both terminal paths and its bridge.':'The list includes connections to other faces and banks.');
     if(tools.open){
@@ -157,11 +174,11 @@ function openConnectionRoute(inline=false){
         }
         const face=physical.faces[bank*2+Number(front)];
         const selected=face.plates.filter(p=>overview||p.net===g||p.net===g-1);
-        const overlay=selected.map(p=>'<path d="'+nickelPath(p.loops)+'" fill="#e3e9ed" fill-rule="evenodd" stroke="#45545d" stroke-width=".3"/>').join('');
+        const overlay=selected.map(p=>'<path d="'+nickelPath(p.loops)+'" fill="'+($('plateMaterial').value==='copper'?'#c58352':'#d5dce1')+'" fill-rule="evenodd" stroke="#45545d" stroke-width=".3"/>').join('');
         marks=marks.replace(/<line [^>]*\/>/g,'').replace(/<text /,overlay+'<text ');
         $('nickelReport').textContent=physical.plateCount+' plates across the pack · '+selected.length+' shown · '+physical.jumpers+' separate '+(physical.jumpers===1?'link':'links')+' to review. Downloads include every bank and both faces.';
         $('nickelFlat').onclick=()=>downloadNickelFaces(c,m,physical,width,thickness);
-        $('nickelStep').onclick=()=>saveBlob('nickel-plates.step',assemblyFile('step',nickelBodies(c,m,physical,thickness)),'application/step');
+        $('nickelStep').onclick=()=>saveBlob(($('plateMaterial').value==='copper'?'copper':'nickel')+'-plates.step',assemblyFile('step',nickelBodies(c,m,physical,thickness)),'application/step');
         $('nickel3D').onclick=()=>previewNickel(c,m,physical,thickness);
       }
     }
@@ -176,6 +193,17 @@ function openConnectionRoute(inline=false){
     if(!next)line('Pack positive  '+name(paths[0].at(-1))+' (+)');
     for(const p of cells)line(label(p)+' · '+name(p)+' · visible end '+(p.flipped?'−':'+'));
   }
+  $('plateMaterial').onchange=()=>{
+    physical=null;
+    $('nickelWidth').value=Math.min(c.d*.85,$('plateMaterial').value==='strip'?7:16);
+    draw();scheduleSave();
+  };
+  $('mapHighlight').checked=$('groupHighlight').checked;
+  $('mapHighlight').onchange=()=>{
+    $('groupHighlight').checked=$('mapHighlight').checked;
+    $('groupHighlight').dispatchEvent(new Event('change',{bubbles:true}));
+    draw();
+  };
   tools.ontoggle=draw;
   for(const id of ['nickelWidth','nickelThickness']){
     $(id).oninput=draw;$(id).onchange=()=>{if($(id).checkValidity())scheduleSave();};
@@ -185,7 +213,8 @@ function openConnectionRoute(inline=false){
 document.querySelectorAll('.autoRoute').forEach(button=>button.onclick=openConnectionRoute);
 
 function refreshInlineRoute(){
-  if($('liveRoute').open&&!$('routeDialog').open)openConnectionRoute(true);
+  const wizard=$('conversion');
+  if(wizard.open?wizard.dataset.step==='4'||wizard.querySelector('[data-page="'+wizard.dataset.step+'"] .wizardRoute'):$('liveRoute').open)openConnectionRoute(true);
 }
 document.getElementById('liveRoute').ontoggle=refreshInlineRoute;
 document.getElementById('routeDialog').addEventListener('close',refreshInlineRoute);

@@ -13,10 +13,16 @@ function describeBanks(){
 }
 $('targetAxis').onchange=describeBanks;
 document.querySelectorAll('.targetPack').forEach(b=>b.onclick=()=>{
+  $('targetBackSketch').hidden=!caseSketch;
   $('batteryOnlyFields').hidden=true;
   $('targetAxis').value=fields.axis.value;$('targetBanks').value=fields.banks.value;
-  $('targetText').value='';$('targetFeedback').textContent='';describeBanks();targetDialog.showModal();$('targetText').focus();
+  $('targetText').value='';$('targetFeedback').textContent='';describeBanks();showSideTool(targetDialog,b);$('targetText').focus();
 });
+$('targetBackSketch').onclick=()=>{
+  targetDialog.close();
+  if($('conversion').open)$('convDraw').click();
+  else $('openSketch').click();
+};
 $('targetCancel').onclick=()=>targetDialog.close();
 $('targetForm').onsubmit=e=>{
   e.preventDefault();
@@ -67,7 +73,7 @@ function fitOpenPack(c,total){
     if(rows>30)continue;
     const trial={...c,rows,cols},grid=layout(trial).grid,skip=new Set(grid.slice(need).map(cell=>cell.id));
     if(local){
-      const quotas=bankGroupCounts(c.series,perGroup,Array(c.banks).fill(grid));
+      const quotas=bankGroupCounts(c.series,perGroup,Array(c.banks).fill(grid),c.axis==='vertical'&&c.fillLowerFirst!==false);
       for(let b=0;b<c.banks;b++)for(let i=quotas[b]*perGroup;i<Math.min(need,grid.length);i++)skip.add(grid[i].id+'/'+b);
     }
     const m=layout(trial,skip),shell=makeShell(trial,m);

@@ -163,7 +163,7 @@ function drawSquiggleEnds(parts,c,m,s,bank,sq,ends){
 }
 function captureView(){
   return {preset:$('viewPreset').value,opacity:$('opacity').value,bank:$('bankView').value,scope:$('scope').value,
-    layers:Object.fromEntries(['showFrame','showMotor','showCells','showBMS'].map(id=>[id,$(id).checked])),bankEnds:[...$('layerBanks').querySelectorAll('select')].map(el=>el.value),hiddenBanks:[...$('layerBanks').querySelectorAll('input:not(:checked)')].map(input=>+input.value),showCase:$('showCase').checked,showSheets:$('showSheets').checked,spacers:$('spacers').checked,locked:$('locked').checked,camera:orbitView?.cameraState()};
+    layers:Object.fromEntries(['showFrame','showMotor','showCells','showBMS','groupHighlight'].map(id=>[id,$(id).checked])),bankEnds:[...$('layerBanks').querySelectorAll('select')].map(el=>el.value),hiddenBanks:[...$('layerBanks').querySelectorAll('input:not(:checked)')].map(input=>+input.value),showCase:$('showCase').checked,showSheets:$('showSheets').checked,spacers:$('spacers').checked,locked:$('locked').checked,camera:orbitView?.cameraState()};
 }
 function initViewTools(){
   const dialog=document.createElement('dialog'),wizard=document.createElement('dialog');
@@ -187,6 +187,7 @@ function initViewTools(){
   btn(dialog,'Fit view',()=>{orbitView?.preset($('viewPreset').value,fields.axis.value);dialog.close();});
   btn(dialog,'Done',()=>dialog.close());$('viewOptions').onclick=()=>dialog.showModal();
   $('sceneLayers').onchange=e=>{
+    if(e.target.id==='groupHighlight')refreshInlineRoute();
     if(e.target.matches('#layerBanks input'))$('scope').value='all';
 
     if(current){const {c,m,shell}=current;orbitView?.update(c,m,shell,caseMesh(c,shell),false);}

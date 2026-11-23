@@ -54,6 +54,18 @@ function routeNickelPlates(c,m,plan,width){
     const offset=new lib.ClipperOffset(2,30),expanded=[];
     for(const pair of segments)offset.AddPath(pair.map(p=>({X:Math.round(p.u*scale),Y:Math.round(p.v*scale)})),lib.JoinType.jtRound,lib.EndType.etOpenRound);
     offset.Execute(expanded,width*scale/2);
+    if($('plateMaterial').value!=='strip'){
+      const pads=new Map(segments.flat().map(p=>[p.id,p]));
+      for(const p of pads.values()){
+        const radius=Math.max(width/2,c.d*.39);
+        const ring=Array.from({length:40},(_,i)=>{
+          const angle=i*Math.PI/20;
+          return {X:Math.round((p.u+radius*Math.cos(angle))*scale),Y:Math.round((p.v+radius*Math.sin(angle))*scale)};
+        });
+        if(!lib.Clipper.Orientation(ring))ring.reverse();
+        expanded.push(ring);
+      }
+    }
     const union=new lib.Clipper(),tree=new lib.PolyTree();
     union.AddPaths(expanded,lib.PolyType.ptSubject,true);
     union.Execute(lib.ClipType.ctUnion,tree,lib.PolyFillType.pftNonZero,lib.PolyFillType.pftNonZero);
@@ -79,8 +91,8 @@ function downloadNickelFaces(c,m,route,width,thickness){
   const end=(p,pos,front)=>[p.bank+1,front?'near':'far',p.r+1,p.k+1,pos?'+':'-'];
   const rows=route.links.map(l=>[l.net,l.kind,...end(l.a,l.posA,l.frontA),...end(l.b,l.posB,l.frontB),l.reason||'Flat plate']);
   text('connections.csv',[['Net','Link','From bank','Face','Row','Column','Terminal','To bank','Face','Row','Column','Terminal','Routing'],...rows].map(row=>row.join(',')).join('\r\n'));
-  text('layout.txt','Nickel geometry review · '+c.series+' series groups\nStrip width '+width+' mm. Thickness '+thickness+' mm.\n'+route.plateCount+' flat pieces. '+route.jumpers+' links require separate routing. See connections.csv.\nBoth faces share the bank diagram coordinates. A far-face sheet is not mirrored for a flipped physical bank.\nReview fit and insulation against the real terminals. Conductor current capacity has not been calculated.');
-  saveBlob('nickel-face-layouts.zip',fflate.zipSync(files,{level:1}),'application/zip');
+  text('layout.txt',$('plateMaterial').selectedOptions[0].text+' geometry review · '+c.series+' series groups\nStrip width '+width+' mm. Thickness '+thickness+' mm.\n'+route.plateCount+' flat pieces. '+route.jumpers+' links require separate routing. See connections.csv.\nBoth faces share the bank diagram coordinates. A far-face sheet is not mirrored for a flipped physical bank.\nReview fit and insulation against the real terminals. Conductor current capacity has not been calculated.');
+  saveBlob(($('plateMaterial').value==='copper'?'copper':'nickel')+'-face-layouts.zip',fflate.zipSync(files,{level:1}),'application/zip');
 }
 function nickelBodies(c,m,route,thickness){
   const bodies=[],lip=c.holder?c.lip:0,edgeU=c.holder?c.edgeU:0,edgeV=c.holder?c.edgeV:0;
@@ -106,13 +118,15 @@ function nickelBodies(c,m,route,thickness){
   return bodies;
 }
 function previewNickel(c,m,route,thickness){
-  const dialog=$('nickelViewer'),host=$('nickelStage');dialog.showModal();
+  const dialog=$('nickelViewer'),host=$('nickelStage');
+  if(dialog.open){dialog.scrollIntoView({block:'nearest'});return;}
+  $('nickel3D').after(dialog);dialog.show();
   let renderer;
   try{renderer=new THREE.WebGLRenderer({antialias:true});}catch{host.textContent='3D graphics unavailable on this device. The face map is available below.';return;}
   host.replaceChildren(renderer.domElement);renderer.setSize(host.clientWidth,host.clientHeight);
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(36,host.clientWidth/host.clientHeight,.1,20000);
   scene.background=new THREE.Color(0x101b27);
-  const material=new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+  const material=new THREE.MeshBasicMaterial({color:$('plateMaterial').value==='copper'?0xc58352:0xc8d1db,side:THREE.DoubleSide});
   for(const [,tris] of nickelBodies(c,m,route,thickness)){
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(tris.flat(2),3));geo.computeVertexNormals();scene.add(new THREE.Mesh(geo,material));
   }
@@ -131,5 +145,6 @@ function previewNickel(c,m,route,thickness){
   host.onpointermove=e=>{if(!last)return;yaw-=(e.clientX-last[0])*.01;pitch=Math.max(-1.55,Math.min(1.55,pitch+(e.clientY-last[1])*.01));last=[e.clientX,e.clientY];paint();};
   host.onlostpointercapture=()=>last=null;
   host.onwheel=e=>{e.preventDefault();zoom=Math.max(.12,Math.min(4,zoom*Math.exp(e.deltaY*.001)));paint();};
-  paint();dialog.addEventListener('close',()=>{scene.traverse(o=>o.geometry?.dispose());ghost.material.dispose();material.dispose();renderer.dispose();renderer.forceContextLoss();host.replaceChildren();host.onwheel=host.onpointerdown=host.onpointermove=host.onlostpointercapture=null;},{once:true});
+  const layers=()=>{for(const mesh of scene.children)mesh.visible=mesh===ghost?$('plateCells').checked:$('plateMetal').checked;paint();};
+  $('plateCells').onchange=$('plateMetal').onchange=layers;layers();dialog.addEventListener('close',()=>{scene.traverse(o=>o.geometry?.dispose());ghost.material.dispose();material.dispose();renderer.dispose();renderer.forceContextLoss();host.replaceChildren();host.onwheel=host.onpointerdown=host.onpointermove=host.onlostpointercapture=null;},{once:true});
 }

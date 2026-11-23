@@ -114,7 +114,7 @@ function rankedSweeps(c,m){
   }
   return candidates.sort((a,b)=>a.score-b.score);
 }
-function bankGroupCounts(series,parallel,banks){
+function bankGroupCounts(series,parallel,banks,fillLowerFirst=false){
   const counts=banks.map(()=>0);
   if(!parallel)return counts;
   let allocated=0;
@@ -122,7 +122,8 @@ function bankGroupCounts(series,parallel,banks){
     const before=allocated;
     for(let b=0;b<banks.length&&allocated<series;b++){
       if((counts[b]+1)*parallel>banks[b].length)continue;
-      counts[b]++;allocated++;
+      const n=fillLowerFirst?Math.min(series-allocated,Math.floor(banks[b].length/parallel)-counts[b]):1;
+      counts[b]+=n;allocated+=n;
     }
     if(allocated===before)break;
   }
@@ -155,7 +156,7 @@ function groupMap(c,m){
   }
   if(c.groupPlan==='auto'||!c.groupPlan){
     if(!parallel)return groups;
-    const quota=bankGroupCounts(c.series,parallel,m.bankCells);
+    const quota=bankGroupCounts(c.series,parallel,m.bankCells,c.axis==='vertical'&&c.fillLowerFirst!==false);
     let first=1;
     m.bankCells.forEach((bank,b)=>{
       const end=quota[b]*parallel;
